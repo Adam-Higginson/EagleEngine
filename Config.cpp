@@ -7,6 +7,7 @@ namespace ee
 		this->m_fullScreen = false;
 		this->m_vSync = false;
 		this->m_4xMsaa = true;
+		this->m_showFPS = false;
 		this->m_screenWidth = 800;
 		this->m_screenHeight = 600;
 
@@ -76,12 +77,19 @@ namespace ee
 
 					this->m_screenHeight = atoi(currentLine.c_str());
 				}
-				if (currentLine.find("4xMSAA") != std::string::npos)
+				else if (currentLine.find("4xMSAA") != std::string::npos)
 				{
 					if (currentLine.find("TRUE") != std::string::npos)
 						this->m_4xMsaa = true;
 					else
 						this->m_4xMsaa = false;
+				}
+				else if (currentLine.find("show_fps") != std::string::npos)
+				{
+					if (currentLine.find("TRUE") != std::string::npos)
+						this->m_showFPS = true;
+					else
+						this->m_showFPS = false;
 				}
 				//Comment found, ignore line
 				else if (currentLine.compare(0, comment.size(), comment))
@@ -145,6 +153,11 @@ namespace ee
 		return this->m_4xMsaa;
 	}
 
+	bool Config::GetShowFPS() const
+	{
+		return this->m_showFPS;
+	}
+
 	int Config::GetScreenWidth() const
 	{
 		return this->m_screenWidth;
@@ -154,6 +167,7 @@ namespace ee
 	{
 		return this->m_screenHeight;
 	}
+
 
 
 

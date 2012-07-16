@@ -7,9 +7,11 @@
 #include "Window.h"
 #include "Logger.h"
 #include "Config.h"
+#include "EagleEngineUtil.h"
 #include <new>
 #include <fstream>
 #include <string>
+#include <xnamath.h>
 
 #define ERROR_BOX(X) MessageBox(NULL, X, L"Error", MB_ICONERROR | MB_OK)
 
@@ -33,7 +35,6 @@ int WINAPI WinMain(HINSTANCE hInstance,
 		logger->Log("Could not load config file for reading!", ee::LEVEL_WARNING);
 	}
 
-
 	//Write all info to log file
 	if (config->GetFullScreen())
 		logger->Log("Full Screen = TRUE", ee::LEVEL_INFO);
@@ -45,25 +46,28 @@ int WINAPI WinMain(HINSTANCE hInstance,
 	else
 		logger->Log("V Sync = FALSE", ee::LEVEL_INFO);
 
+	if (config->GetShowFPS())
+		logger->Log("Show FPS = TRUE", ee::LEVEL_INFO);
+	else
+		logger->Log("Show FPS = FALSE", ee::LEVEL_INFO);
+
 	char buffer[10];
-	itoa(config->GetScreenWidth(), buffer, 10);
+	_itoa_s(config->GetScreenWidth(), buffer, 10);
 	logger->Log(buffer, ee::LEVEL_INFO);
-	itoa(config->GetScreenHeight(), buffer, 10);
+	_itoa_s(config->GetScreenHeight(), buffer, 10);
 	logger->Log(buffer, ee::LEVEL_INFO);
 
-	//The window the game will run in
-	ee::Window *window;
+	//Verify XNAMath CPU support
+	if (!XMVerifyCPUSupport())
+	{
+		ERROR_BOX(L"XNA Maths is not supported on this CPU!");
+		logger->Log("XNA Maths is not supported on this CPU!", ee::LEVEL_SEVERE);
 
-	try
-	{
-		window = new ee::Window(hInstance, L"Title", config, logger);
-	}
-	catch (std::bad_alloc&)
-	{
-		OutputDebugString(L"Bad alloc failure!");
-		logger->Log("Bad alloc for window", ee::LEVEL_SEVERE);
 		return -1;
 	}
+
+	//The window the game will run in
+	ee::Window *window = new ee::Window(hInstance, L"Title", config, logger);;
 
 	if (!window->Init(nCmdShow))
 		return -1;

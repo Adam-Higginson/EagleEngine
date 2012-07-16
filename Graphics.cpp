@@ -53,9 +53,8 @@ namespace ee
 		}
 
 		//Direct 11 should always allow at least 4xMSAA. We assert this here
-		UINT m4xMsaaQuality;
-		HR(m_device->CheckMultisampleQualityLevels(DXGI_FORMAT_R8G8B8A8_UNORM, 4, &m4xMsaaQuality));
-		assert(m4xMsaaQuality > 0);
+		HR(m_device->CheckMultisampleQualityLevels(DXGI_FORMAT_R8G8B8A8_UNORM, 4, &m_msaaQuality));
+		assert(m_msaaQuality > 0);
 
 		DXGI_SWAP_CHAIN_DESC swapDesc;
 		ZeroMemory(&swapDesc, sizeof(DXGI_SWAP_CHAIN_DESC));
@@ -79,7 +78,7 @@ namespace ee
 		if (m_is4xMsaa)
 		{
 			swapDesc.SampleDesc.Count = 4;
-			swapDesc.SampleDesc.Quality = m4xMsaaQuality - 1;
+			swapDesc.SampleDesc.Quality = m_msaaQuality - 1;
 
 			m_logger->Log("4xMSAA Enabled", ee::LEVEL_INFO);
 
@@ -101,10 +100,10 @@ namespace ee
 
 		//The factory interface
 		IDXGIFactory *dxgiFactory = NULL;
-		HR(dxgiAdapter->GetParent(uuidof(IDXGIFactory), (void**)&dxgiFactory));
+		HR(dxgiAdapter->GetParent(__uuidof(IDXGIFactory), (void**)&dxgiFactory));
 
 		//Now create swap chain
-		HR(dxgiFactory->CreateSwapChain(m_device, swapDesc, &m_swapChain));
+		HR(dxgiFactory->CreateSwapChain(m_device, &swapDesc, &m_swapChain));
 
 		dxgiDevice->Release();
 		dxgiDevice = NULL;
@@ -115,6 +114,7 @@ namespace ee
 		dxgiFactory->Release();
 		dxgiFactory = NULL;
 
+		//Create the Render Target View
 		ID3D11Texture2D *backBufferImage;
 
 		if (FAILED(m_swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&backBufferImage)))
@@ -133,33 +133,52 @@ namespace ee
 
 		backBufferImage->Release();
 
-		m_deviceContext->OMSetRenderTargets(1, &m_backBuffer, NULL);
+		//Create the Depth/Stencil Buffer and view
+		D3D11_TEXTURE2D_DESC depthDesc;
+
+		depthDesc.Width = m_screenWidth;
+		depthDesc.Height = m_screenHeight;
+		depthDesc.MipLevels = 1;
+		depthDesc.ArraySize = 1;
+		depthDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT; //24 bits for Depth, 8 for stencil. In range [0, 1]
+		//Msaa must be same as render target
+		if (m_is4xMsaa)
+		{
+			depthDesc.SampleDesc.Count = 4;
+			depthDesc.SampleDesc.Quality = m_msaaQuality - 1;
+		}
+		else
+		{
+			depthDesc.SampleDesc.Count = 1;
+			depthDesc.SampleDesc.Quality = 0;
+		}
+
+		//GPU will be reading/writing to resource
+		depthDesc.Usage = D3D11_USAGE_DEFAULT;
+		//Where the resource will be bound to the pipeline
+		depthDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+		depthDesc.CPUAccessFlags = 0;
+		depthDesc.MiscFlags = 0;
+
+		//Return pointer to depth/stencil buffer
+		HR(m_device->CreateTexture2D(&depthDesc, NULL, &m_depthStencilBuffer)); 
+		//Resource we want to create a view to
+		HR(m_device->CreateDepthStencilView(m_depthStencilBuffer, NULL, &m_depthStencilView)); 
+
+		//Set the render targets
+		m_deviceContext->OMSetRenderTargets(1, &m_backBuffer, m_depthStencilView);
 
 		backBufferImage = NULL;
 
 		//Set the viewport
-		D3D11_VIEWPORT viewport;
-		ZeroMemory(&viewport, sizeof(D3D11_VIEWPORT));
+		m_viewport.TopLeftX = 0.0f;
+		m_viewport.TopLeftY = 0.0f;
+		m_viewport.Width = static_cast<float>(m_screenWidth);
+		m_viewport.Height = static_cast<float>(m_screenHeight);
+		m_viewport.MinDepth = 0.0f;
+		m_viewport.MaxDepth = 1.0f;
 
-		viewport.TopLeftX = 0;
-		viewport.TopLeftY = 0;
-		viewport.Width = m_screenWidth;
-		viewport.Height = m_screenHeight;
-
-		m_deviceContext->RSSetViewports(1, &viewport);
-
-		//Set up view matrix
-		D3DXVECTOR3 eye(0.0f, 0.0f, -5.0f);
-		D3DXVECTOR3 view(0.0f, 0.0f, 1.0f);
-		D3DXVECTOR3 up(0.0f, 1.0f, 0.0f);
-
-		//D3DXMatrixLookAtLH(m_viewMatrix, &eye, &view, &up);
-
-		//Set up projection matrix
-		//D3DXMatrixPerspectiveFovLH(m_projectionMatrix, (FLOAT)D3DX_PI * 0.5, (FLOAT)m_screenWidth / (FLOAT)m_screenHeight, 0.1f, 100.0f);
-
-		//if (m_logger)
-		//	m_logger->Log("Graphics context created", ee::LEVEL_INFO);
+		m_deviceContext->RSSetViewports(1, &m_viewport);
 
 		return TRUE;
 
@@ -175,6 +194,69 @@ namespace ee
 		m_deviceContext->ClearRenderTargetView(m_backBuffer, D3DXCOLOR(r, g, b, 1.0f));
 
 		m_swapChain->Present(0, 0);
+	}
+
+	void Graphics::Resize(int newWidth, int newHeight)
+	{
+		m_screenWidth = newWidth;
+		m_screenHeight = newHeight;
+
+		m_logger->Log(ee::IntegerToString(m_screenWidth), ee::LEVEL_INFO);
+		m_logger->Log(ee::IntegerToString(m_screenHeight), ee::LEVEL_INFO);
+
+		assert(m_device);
+		assert(m_deviceContext);
+		assert(m_swapChain);
+
+		HR(m_swapChain->ResizeBuffers(1, m_screenWidth, m_screenHeight, DXGI_FORMAT_R8G8B8A8_UNORM, 0));
+		ID3D11Texture2D *backBuffer;
+		HR(m_swapChain->GetBuffer(1, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&backBuffer)));
+		HR(m_device->CreateRenderTargetView(backBuffer, NULL, &m_backBuffer));
+		
+		backBuffer->Release();
+
+		//Must rebuild depth and stencil buffer
+		D3D11_TEXTURE2D_DESC depthDesc;
+
+		depthDesc.Width = m_screenWidth;
+		depthDesc.Height = m_screenHeight;
+		depthDesc.MipLevels = 1;
+		depthDesc.ArraySize = 1;
+		depthDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT; //24 bits for Depth, 8 for stencil. In range [0, 1]
+		//Msaa must be same as render target
+		if (m_is4xMsaa)
+		{
+			depthDesc.SampleDesc.Count = 4;
+			depthDesc.SampleDesc.Quality = m_msaaQuality - 1;
+		}
+		else
+		{
+			depthDesc.SampleDesc.Count = 1;
+			depthDesc.SampleDesc.Quality = 0;
+		}
+
+		//GPU will be reading/writing to resource
+		depthDesc.Usage = D3D11_USAGE_DEFAULT;
+		//Where the resource will be bound to the pipeline
+		depthDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+		depthDesc.CPUAccessFlags = 0;
+		depthDesc.MiscFlags = 0;
+
+		HR(m_device->CreateTexture2D(&depthDesc, NULL, &m_depthStencilBuffer));
+		HR(m_device->CreateDepthStencilView(m_depthStencilBuffer, NULL, &m_depthStencilView));
+
+		m_deviceContext->OMSetRenderTargets(1, &m_backBuffer, m_depthStencilView);
+
+		//Transform the viewport
+		m_viewport.TopLeftX = 0.0f;
+		m_viewport.TopLeftY = 0.0f;
+		m_viewport.Width = static_cast<float>(m_screenWidth);
+		m_viewport.Height = static_cast<float>(m_screenHeight);
+		m_viewport.MinDepth = 0.0f;
+		m_viewport.MaxDepth = 1.0f;
+
+		m_deviceContext->RSSetViewports(1, &m_viewport);
+
 	}
 
 	void Graphics::Release()
@@ -202,6 +284,18 @@ namespace ee
 		{
 			m_backBuffer->Release();
 			m_backBuffer = NULL;
+		}
+
+		if (m_depthStencilBuffer)
+		{
+			m_depthStencilBuffer->Release();
+			m_depthStencilBuffer = NULL;
+		}
+
+		if (m_depthStencilView)
+		{
+			m_depthStencilView->Release();
+			m_depthStencilView = NULL;
 		}
 	}
 }

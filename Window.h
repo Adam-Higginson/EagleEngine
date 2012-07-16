@@ -9,6 +9,7 @@
 //INCLUDES
 ////////////////////
 #include <Windows.h>
+#include <sstream>
 #include "Logger.h"
 #include "Graphics.h"
 #include "InputHandler.h"
@@ -34,6 +35,12 @@ namespace ee
 		LRESULT CALLBACK MessageHandler(HWND, UINT, WPARAM, LPARAM);
 
 	private:
+
+		//Deals with the window being resized
+		void Resize();
+		//Draws Frame Statistics
+		void DrawFrameStats();
+
 		//The title of the window
 		LPCWSTR m_windowTitle;
 		//The application handle
@@ -42,16 +49,24 @@ namespace ee
 		int m_screenWidth, m_screenHeight;
 		//Handle to window
 		HWND m_hWnd;
+		//Whether FPS should be show
+		BOOL m_showFPS;
 		//Whether full screen or not
 		BOOL m_fullScreen;
+		//Whether minimised or not
+		BOOL m_minimised;
 		//The logger object
 		Logger *m_logger;
 		//The graphics object
 		Graphics *m_graphics;
 		//Input handler object
 		InputHandler *m_inputHandler;
+		//Handle to config to be passed to graphics object
+		Config *m_config;
 		//Whether the game is paused
 		BOOL m_isPaused;
+		//Whether the user is resizing
+		BOOL m_isResizing;
 		//Timer object
 		Timer m_timer;
 	};

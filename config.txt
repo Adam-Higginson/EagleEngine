@@ -2,3 +2,5 @@ full_screen = FALSE
 screen_width = 800
 screen_height = 600
 v_sync = FALSE
+4xMSAA = TRUE
+show_fps = TRUE

@@ -19,6 +19,9 @@ namespace ee
 		//Get the time between frames
 		float GetDeltaTime() const; //seconds
 
+		//Whether the timer is stopped
+		bool IsStopped() const;
+
 		//Reset the timer, usually call before message loop
 		void Reset();
 		//Call when game is unpaused

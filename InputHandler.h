@@ -5,8 +5,12 @@
 #ifndef _INPUT_HANDLER_H_
 #define _INPUT_HANDLER_H_
 
+//#include <xnamath.h>
+
 namespace ee
 {
+	enum MouseButton {MOUSE_LEFT = 0, MOUSE_MIDDLE = 1, MOUSE_RIGHT = 2};
+
 	class InputHandler
 	{
 	public:
@@ -16,14 +20,31 @@ namespace ee
 
 		bool Init();
 
-		void keyDown(unsigned int key);
-		void keyUp(unsigned int key);
+		void KeyDown(unsigned int key);
+		void KeyUp(unsigned int key);
 
-		bool isKeyDown(unsigned int key);
-		bool isKeyUp(unsigned int key);
+		void MouseDown(MouseButton button, int x, int y);
+		void MouseUp(MouseButton button, int x, int y);
+		void MouseMove(int x, int y);
+
+		bool IsKeyDown(unsigned int key) const;
+		bool IsKeyUp(unsigned int key) const;
+
+		bool IsMouseButtonDown(MouseButton button) const;
+		bool IsMouseButtonUp(MouseButton button) const;
+
+		int MouseX() const;
+		int MouseY() const;
+
+		//XMFLOAT2 GetMousePoint() const;
+
+
 
 	private:
 		bool m_keys[256];
+		bool m_mouseButtons[3];
+		int m_mouseX, m_mouseY; //Last known mouse position
+
 	};
 }
 

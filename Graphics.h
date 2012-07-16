@@ -12,26 +12,29 @@
 #include <d3d11.h>
 #include <d3dx11.h>
 #include <D3DX10.h>
+#include <DxErr.h>
 #include <assert.h>
 
 #include "Logger.h"
 #include "Config.h"
+#include "EagleEngineUtil.h"
 
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "d3dx11.lib")
 #pragma comment(lib, "d3dx10.lib")
+#pragma comment(lib, "dxerr.lib")
 
 #if defined(DEBUG) | defined(_DEBUG)
-	#ifndef HR
-		#define HR(x)
-		{
-			HRESULT hr = (x);
-			if (FAILED(hr))
-			{
-				DXTrace(__FILE__, (DWORD)__LINE__, hr, L#x, true);
-			}
-		}
+#ifndef HR 
+	#define HR(x)														\
+	{																	\
+			HRESULT hr = (x);											\
+			if (FAILED(hr))												\
+			{															\
+				DXTrace(__FILE__, (DWORD)__LINE__, hr, L#x, true);		\
+			}															\
+	}
 	#endif
 #else
 	#ifndef HR
@@ -54,6 +57,9 @@ namespace ee
 		void UpdateScene(float elapsedTime);
 		//Draw the scene
 		void DrawScene(float r, float g, float b);
+		//Resize the scene
+		void Resize(int newWidth, int newHeight);
+
 		void Release();
 
 	private:
@@ -66,12 +72,20 @@ namespace ee
 		BOOL m_is4xMsaa;
 		//The swap chain
 		IDXGISwapChain *m_swapChain;
+		//Device
 		ID3D11Device *m_device;
+		//Device context
 		ID3D11DeviceContext *m_deviceContext;
+		//Render target view of the back buffer
 		ID3D11RenderTargetView *m_backBuffer;
-		D3DXMATRIX *m_viewMatrix;
-		D3DXMATRIX *m_projectionMatrix;
-		
+		//The depth stencil buffer
+		ID3D11Texture2D *m_depthStencilBuffer;
+		//The depth stencil view
+		ID3D11DepthStencilView *m_depthStencilView;
+		//The msaa quality
+		UINT m_msaaQuality;
+		//The viewport
+		D3D11_VIEWPORT m_viewport;		
 	};
 }
 

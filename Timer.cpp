@@ -106,5 +106,10 @@ namespace ee
 		}
 	}
 
+	bool Timer::IsStopped() const
+	{
+		return m_isStopped;
+	}
+
 
 }

@@ -75,6 +75,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Config.cpp" />
+    <ClCompile Include="EagleEngineUtil.cpp" />
     <ClCompile Include="Graphics.cpp" />
     <ClCompile Include="InputHandler.cpp" />
     <ClCompile Include="Logger.cpp" />
@@ -84,6 +85,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Config.h" />
+    <ClInclude Include="EagleEngineUtil.h" />
     <ClInclude Include="Graphics.h" />
     <ClInclude Include="InputHandler.h" />
     <ClInclude Include="Logger.h" />
