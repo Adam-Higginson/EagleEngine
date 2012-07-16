@@ -24,8 +24,8 @@ namespace ee
 		//Use this to open the logger object
 		bool Init();
 
-		LoggerLevel GetCurrentLevel();
-		std::string& GetFileName();
+		LoggerLevel GetCurrentLevel() const;
+		const std::string& GetFileName() const;
 
 		void SetCurrentLevel(LoggerLevel);
 

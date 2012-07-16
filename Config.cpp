@@ -6,6 +6,7 @@ namespace ee
 	{
 		this->m_fullScreen = false;
 		this->m_vSync = false;
+		this->m_4xMsaa = true;
 		this->m_screenWidth = 800;
 		this->m_screenHeight = 600;
 
@@ -75,6 +76,13 @@ namespace ee
 
 					this->m_screenHeight = atoi(currentLine.c_str());
 				}
+				if (currentLine.find("4xMSAA") != std::string::npos)
+				{
+					if (currentLine.find("TRUE") != std::string::npos)
+						this->m_4xMsaa = true;
+					else
+						this->m_4xMsaa = false;
+				}
 				//Comment found, ignore line
 				else if (currentLine.compare(0, comment.size(), comment))
 				{
@@ -93,10 +101,12 @@ namespace ee
 			if (!defaultConfig.is_open())
 				return false;
 
+			defaultConfig << "//This is the default config, each line beginning with '//' is ignored" << std::endl;
 			defaultConfig << "full_screen = FALSE" << std::endl;
 			defaultConfig << "screen_width = 800" << std::endl;
 			defaultConfig << "screen_height = 600" << std::endl;
 			defaultConfig << "v_sync = FALSE" << std::endl;
+			defaultConfig << "4xMSAA = TRUE" << std::endl;
 
 			defaultConfig.close();
 
@@ -128,6 +138,11 @@ namespace ee
 	bool Config::GetVSync() const
 	{
 		return this->m_vSync;
+	}
+
+	bool Config::Get4xMsaa() const
+	{
+		return this->m_4xMsaa;
 	}
 
 	int Config::GetScreenWidth() const

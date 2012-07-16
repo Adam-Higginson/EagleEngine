@@ -12,13 +12,32 @@
 #include <d3d11.h>
 #include <d3dx11.h>
 #include <D3DX10.h>
+#include <assert.h>
 
 #include "Logger.h"
+#include "Config.h"
 
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "d3dx11.lib")
 #pragma comment(lib, "d3dx10.lib")
+
+#if defined(DEBUG) | defined(_DEBUG)
+	#ifndef HR
+		#define HR(x)
+		{
+			HRESULT hr = (x);
+			if (FAILED(hr))
+			{
+				DXTrace(__FILE__, (DWORD)__LINE__, hr, L#x, true);
+			}
+		}
+	#endif
+#else
+	#ifndef HR
+		#define HR(x) (x)
+	#endif
+#endif
 
 
 namespace ee
@@ -26,7 +45,7 @@ namespace ee
 	class Graphics
 	{
 	public:
-		Graphics(HWND, BOOL, int, int, Logger*);
+		Graphics(HWND, Config*, Logger*);
 		Graphics(const Graphics&);
 		~Graphics();
 
@@ -43,6 +62,8 @@ namespace ee
 		int m_screenWidth, m_screenHeight;
 		//Whether to run in full screen or not
 		BOOL m_fullScreen;
+		//Whether 4x msaa is enabled
+		BOOL m_is4xMsaa;
 		//The swap chain
 		IDXGISwapChain *m_swapChain;
 		ID3D11Device *m_device;

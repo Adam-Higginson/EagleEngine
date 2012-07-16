@@ -26,6 +26,7 @@ namespace ee
 
 		bool	GetFullScreen() const;
 		bool	GetVSync() const;
+		bool	Get4xMsaa() const;
 		int		GetScreenWidth() const;
 		int		GetScreenHeight() const;
 
@@ -33,7 +34,7 @@ namespace ee
 		std::ifstream m_configFile;
 		const std::string m_fileName;
 		//Set config values
-		bool m_fullScreen, m_vSync;
+		bool m_fullScreen, m_vSync, m_4xMsaa;
 		int m_screenWidth, m_screenHeight;
 	};
 }
