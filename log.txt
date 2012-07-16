@@ -1,0 +1,6 @@
+Warning: Unrecognised line in "config.txt"
+Info: Full Screen = TRUE
+Info: V Sync = FALSE
+Info: 800
+Info: 600
+Info: Window creation success
