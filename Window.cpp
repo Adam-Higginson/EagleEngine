@@ -14,6 +14,10 @@ namespace ee
 		m_logger = logger;
 		m_fullScreen = fullScreen;
 		m_config = new Config();
+		m_isResizing = FALSE;
+		m_fullScreen = FALSE;
+		m_minimised = FALSE;
+		m_firstLaunch = TRUE;
 	}
 
 	Window::Window(HINSTANCE hInstance, LPCWSTR windowTitle, Config *config, Logger *logger)
@@ -26,6 +30,11 @@ namespace ee
 		this->m_fullScreen = config->GetFullScreen();
 		this->m_showFPS = config->GetShowFPS();
 		this->m_config = config;
+		m_isResizing = FALSE;
+		m_fullScreen = FALSE;
+		m_minimised = FALSE;
+		m_isPaused = FALSE;
+		m_firstLaunch = TRUE;
 	}
 
 
@@ -58,28 +67,47 @@ namespace ee
 		wndClassEx.lpfnWndProc = WndProc;
 		wndClassEx.hInstance = m_hInstance;
 		wndClassEx.lpszClassName = m_windowTitle;
+		wndClassEx.hbrBackground = (HBRUSH)GetStockObject(NULL_BRUSH);
 		wndClassEx.hCursor = LoadCursor(NULL, IDC_ARROW);
 
 		//Register the window class
-		RegisterClassEx(&wndClassEx);
+		if (!RegisterClassEx(&wndClassEx))
+		{
+			m_logger->Log("Could not register window class!", ee::LEVEL_SEVERE);
+			return FALSE;
+		}
 
-		//RECT wr = {0, 0, m_screenWidth, m_screenHeight};
-		//AdjustWindowRect(&wr, WS_OVERLAPPEDWINDOW, FALSE);
+		RECT wr = {0, 0, m_screenWidth, m_screenHeight};
+		AdjustWindowRect(&wr, WS_OVERLAPPEDWINDOW, FALSE);
+		int width = wr.right - wr.left;
+		int height = wr.bottom - wr.top;
 
 		m_hWnd = CreateWindowEx(NULL, m_windowTitle, m_windowTitle, 
-							  WS_OVERLAPPEDWINDOW, 300, 300, 
-							  m_screenWidth, m_screenHeight, 
+							  WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, 
+							  width, height, 
 							  NULL, NULL, m_hInstance, NULL);
 
+		if (!m_hWnd)
+		{
+			m_logger->Log("Could not create main window!", ee::LEVEL_SEVERE);
+			return FALSE;
+		}
+
 		ShowWindow(m_hWnd, nCmdShow);
-		SetForegroundWindow(m_hWnd);
-		SetFocus(m_hWnd);
+		UpdateWindow(m_hWnd);
 		//ShowCursor(FALSE);
 
 		m_graphics = new Graphics(m_hWnd, m_config, m_logger);
 
 		if (!m_graphics->Init())
 			return FALSE;
+
+		/*RECT size;
+		GetWindowRect(m_hWnd, &size);
+
+		m_logger->Log("Found window width:", ee::LEVEL_INFO);
+		m_logger->Log(IntegerToString(size.right - size.left), ee::LEVEL_INFO);*/
+
 
 		return TRUE;
 	}
@@ -118,10 +146,10 @@ namespace ee
 			else
 			{
 				//Pause key, toggle paused
-				if (m_inputHandler->IsKeyDown(VK_ESCAPE))
+				/*if (m_inputHandler->IsKeyDown(VK_ESCAPE))
 				{
 					m_isPaused = !m_isPaused;
-				}
+				}*/
 
 				m_timer.Tick();
 
@@ -132,7 +160,7 @@ namespace ee
 						DrawFrameStats();
 					}
 					m_graphics->UpdateScene(m_timer.GetDeltaTime());
-					m_graphics->DrawScene(0.0f, 0.0f, 0.0f);
+					m_graphics->DrawScene(0.4f, 0.0f, 0.0f);
 
 				}
 				else
@@ -155,7 +183,7 @@ namespace ee
 				m_inputHandler->KeyUp((unsigned int) wParam);
 				return 0;
 			case WM_ACTIVATE:
-				if (LOWORD(lParam) == WA_INACTIVE)
+				if (LOWORD(wParam) == WA_INACTIVE)
 				{
 					m_isPaused = TRUE;
 					m_timer.Stop();
@@ -169,9 +197,9 @@ namespace ee
 				return 0;
 			//When the user grabs the resize bars
 			case WM_ENTERSIZEMOVE:
-				m_isPaused = TRUE;
-				m_isResizing = TRUE;
-				m_timer.Stop();
+					m_isPaused = TRUE;
+					m_isResizing = TRUE;
+					m_timer.Stop();
 
 				return 0;
 			//When the user releases resize bars
@@ -179,7 +207,7 @@ namespace ee
 				m_isPaused = FALSE;
 				m_isResizing = FALSE;
 				m_timer.Start();
-
+				Resize();
 				return 0;
 
 			case WM_SIZE:
@@ -187,7 +215,8 @@ namespace ee
 				m_screenHeight = HIWORD(lParam);
 				if (wParam == SIZE_MAXIMIZED)
 				{
-					m_isPaused = true;
+					OutputDebugString(L"Size maximised!");
+					m_isPaused = false;
 					m_fullScreen = TRUE;
 					m_minimised = FALSE;
 				}
@@ -209,7 +238,7 @@ namespace ee
 					else if (m_fullScreen)
 					{
 						m_isPaused = false;
-						m_fullScreen = true;
+						m_fullScreen = false;
 						Resize();
 					}
 					
@@ -278,6 +307,10 @@ namespace ee
 	//////////////////
 	void Window::Resize()
 	{
+		m_logger->Log("Resizing screen to: ", ee::LEVEL_INFO);
+		m_logger->Log(IntegerToString(m_screenWidth), ee::LEVEL_INFO);
+		m_logger->Log(IntegerToString(m_screenHeight), ee::LEVEL_INFO);
+		m_logger->Log("-------------------", ee::LEVEL_INFO);
 		m_graphics->Resize(m_screenWidth, m_screenHeight);
 	}
 

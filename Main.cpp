@@ -67,7 +67,7 @@ int WINAPI WinMain(HINSTANCE hInstance,
 	}
 
 	//The window the game will run in
-	ee::Window *window = new ee::Window(hInstance, L"Title", config, logger);;
+	ee::Window *window = new ee::Window(hInstance, L"Eagle Engine", config, logger);;
 
 	if (!window->Init(nCmdShow))
 		return -1;

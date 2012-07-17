@@ -64,7 +64,6 @@ namespace ee
 		swapDesc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 		swapDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 		swapDesc.OutputWindow = m_hWnd;
-		swapDesc.SampleDesc.Count = 4;
 		swapDesc.BufferDesc.Width = m_screenWidth;
 		swapDesc.BufferDesc.Height = m_screenHeight;
 		swapDesc.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
@@ -114,26 +113,13 @@ namespace ee
 		dxgiFactory->Release();
 		dxgiFactory = NULL;
 
-		//Create the Render Target View
-		ID3D11Texture2D *backBufferImage;
+		ID3D11Texture2D *backBuffer;
+		HR(m_swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&backBuffer)));
+		HR(m_device->CreateRenderTargetView(backBuffer, NULL, &m_backBuffer));
+		
+		backBuffer->Release();
 
-		if (FAILED(m_swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&backBufferImage)))
-		{
-			if (m_logger)
-				m_logger->Log("Could not get buffer!", ee::LEVEL_SEVERE);
-			return FALSE;
-		}
-
-		if (FAILED(m_device->CreateRenderTargetView(backBufferImage, NULL, &m_backBuffer)))
-		{
-			if (m_logger)
-				m_logger->Log("Could not create render target view!", ee::LEVEL_SEVERE);
-			return FALSE;
-		}
-
-		backBufferImage->Release();
-
-		//Create the Depth/Stencil Buffer and view
+		//Must rebuild depth and stencil buffer
 		D3D11_TEXTURE2D_DESC depthDesc;
 
 		depthDesc.Width = m_screenWidth;
@@ -160,17 +146,12 @@ namespace ee
 		depthDesc.CPUAccessFlags = 0;
 		depthDesc.MiscFlags = 0;
 
-		//Return pointer to depth/stencil buffer
-		HR(m_device->CreateTexture2D(&depthDesc, NULL, &m_depthStencilBuffer)); 
-		//Resource we want to create a view to
-		HR(m_device->CreateDepthStencilView(m_depthStencilBuffer, NULL, &m_depthStencilView)); 
+		HR(m_device->CreateTexture2D(&depthDesc, NULL, &m_depthStencilBuffer));
+		HR(m_device->CreateDepthStencilView(m_depthStencilBuffer, NULL, &m_depthStencilView));
 
-		//Set the render targets
 		m_deviceContext->OMSetRenderTargets(1, &m_backBuffer, m_depthStencilView);
 
-		backBufferImage = NULL;
-
-		//Set the viewport
+		//Transform the viewport
 		m_viewport.TopLeftX = 0.0f;
 		m_viewport.TopLeftY = 0.0f;
 		m_viewport.Width = static_cast<float>(m_screenWidth);
@@ -193,7 +174,9 @@ namespace ee
 	{
 		m_deviceContext->ClearRenderTargetView(m_backBuffer, D3DXCOLOR(r, g, b, 1.0f));
 
-		m_swapChain->Present(0, 0);
+		m_deviceContext->ClearDepthStencilView(m_depthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+
+		HR(m_swapChain->Present(0, 0));
 	}
 
 	void Graphics::Resize(int newWidth, int newHeight)
@@ -201,16 +184,17 @@ namespace ee
 		m_screenWidth = newWidth;
 		m_screenHeight = newHeight;
 
-		m_logger->Log(ee::IntegerToString(m_screenWidth), ee::LEVEL_INFO);
-		m_logger->Log(ee::IntegerToString(m_screenHeight), ee::LEVEL_INFO);
-
 		assert(m_device);
 		assert(m_deviceContext);
 		assert(m_swapChain);
 
+		m_backBuffer->Release();
+		m_depthStencilView->Release();
+		m_depthStencilBuffer->Release();
+
 		HR(m_swapChain->ResizeBuffers(1, m_screenWidth, m_screenHeight, DXGI_FORMAT_R8G8B8A8_UNORM, 0));
 		ID3D11Texture2D *backBuffer;
-		HR(m_swapChain->GetBuffer(1, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&backBuffer)));
+		HR(m_swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&backBuffer)));
 		HR(m_device->CreateRenderTargetView(backBuffer, NULL, &m_backBuffer));
 		
 		backBuffer->Release();
@@ -259,6 +243,11 @@ namespace ee
 
 	}
 
+	float Graphics::GetAspectRatio() const
+	{
+		return static_cast<float>(m_screenWidth) / m_screenHeight;
+	}
+
 	void Graphics::Release()
 	{
 		if (m_swapChain)
@@ -276,6 +265,7 @@ namespace ee
 
 		if (m_deviceContext)
 		{
+			m_deviceContext->ClearState();
 			m_deviceContext->Release();
 			m_deviceContext = NULL;
 		}

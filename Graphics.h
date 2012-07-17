@@ -60,6 +60,8 @@ namespace ee
 		//Resize the scene
 		void Resize(int newWidth, int newHeight);
 
+		float GetAspectRatio() const;
+
 		void Release();
 
 	private:

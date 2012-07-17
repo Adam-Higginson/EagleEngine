@@ -15,6 +15,7 @@
 #include "InputHandler.h"
 #include "Config.h"
 #include "Timer.h"
+#include "EagleEngineUtil.h"
 
 namespace ee
 {
@@ -55,6 +56,8 @@ namespace ee
 		BOOL m_fullScreen;
 		//Whether minimised or not
 		BOOL m_minimised;
+		//Whether the window has just opened
+		BOOL m_firstLaunch;
 		//The logger object
 		Logger *m_logger;
 		//The graphics object
