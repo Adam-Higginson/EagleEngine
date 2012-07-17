@@ -17,7 +17,6 @@ namespace ee
 		m_isResizing = FALSE;
 		m_fullScreen = FALSE;
 		m_minimised = FALSE;
-		m_firstLaunch = TRUE;
 	}
 
 	Window::Window(HINSTANCE hInstance, LPCWSTR windowTitle, Config *config, Logger *logger)
@@ -34,7 +33,6 @@ namespace ee
 		m_fullScreen = FALSE;
 		m_minimised = FALSE;
 		m_isPaused = FALSE;
-		m_firstLaunch = TRUE;
 	}
 
 
