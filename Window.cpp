@@ -307,10 +307,6 @@ namespace ee
 	//////////////////
 	void Window::Resize()
 	{
-		m_logger->Log("Resizing screen to: ", ee::LEVEL_INFO);
-		m_logger->Log(IntegerToString(m_screenWidth), ee::LEVEL_INFO);
-		m_logger->Log(IntegerToString(m_screenHeight), ee::LEVEL_INFO);
-		m_logger->Log("-------------------", ee::LEVEL_INFO);
 		m_graphics->Resize(m_screenWidth, m_screenHeight);
 	}
 
