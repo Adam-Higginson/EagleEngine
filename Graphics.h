@@ -15,10 +15,12 @@
 #include <DxErr.h>
 #include <assert.h>
 #include <vector>
+#include <xnamath.h>
 
 #include "Logger.h"
 #include "Config.h"
 #include "EagleEngineUtil.h"
+#include "Colour.h"
 
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "d3d11.lib")
@@ -54,6 +56,13 @@
 
 namespace ee
 {
+	//Basic Vertex struct
+	struct Vertex
+	{
+		XMFLOAT3 pos;
+		XMFLOAT4 colour;
+	};
+
 	class Graphics
 	{
 	public:
@@ -74,7 +83,14 @@ namespace ee
 		void Release();
 
 	private:
+		//Creates the vertex and index buffers
+		void CreateBuffers();
+		//Builds and compilles shaders
+		bool BuildShaders();
+
+		//Logger object used for logging info to text file
 		Logger *m_logger;
+		//Handle to main output window
 		HWND m_hWnd;
 		int m_screenWidth, m_screenHeight;
 		//Whether to run in full screen or not
@@ -96,7 +112,16 @@ namespace ee
 		//The msaa quality
 		UINT m_msaaQuality;
 		//The viewport
-		D3D11_VIEWPORT m_viewport;		
+		D3D11_VIEWPORT m_viewport;
+
+		//World, view and projection matrices
+		XMFLOAT4X4 m_world;
+		XMFLOAT4X4 m_view;
+		XMFLOAT4X4 m_proj;
+
+		//Box buffer to hold data about cube
+		ID3D11Buffer *m_cubeVB;
+		ID3D11Buffer *m_cubeIB;
 	};
 }
 

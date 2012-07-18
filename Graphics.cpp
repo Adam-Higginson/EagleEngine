@@ -10,6 +10,12 @@ namespace ee
 		m_screenHeight = config->GetScreenHeight();
 		m_is4xMsaa = config->Get4xMsaa();
 		m_logger = logger;
+
+		//Load world, view and projection matrices
+		XMMATRIX identityMatrix = XMMatrixIdentity();
+		XMStoreFloat4x4(&m_world, identityMatrix);
+		XMStoreFloat4x4(&m_view, identityMatrix);
+		XMStoreFloat4x4(&m_proj, identityMatrix);
 	}
 
 	Graphics::Graphics(const Graphics &other)
@@ -385,5 +391,99 @@ namespace ee
 			m_depthStencilView->Release();
 			m_depthStencilView = NULL;
 		}
+	}
+
+	////////////////////////
+	//PRIVATE FUNCTIONS
+	///////////////////////
+	void Graphics::CreateBuffers()
+	{
+		//Create vertex buffer
+		//Array represents a cube
+		Vertex vertices[] =
+		{
+			{ XMFLOAT3(-1.0f, -1.0f, -1.0f), (const float*)&Colour::BLUE },
+			{ XMFLOAT3(-1.0f, 1.0f, -1.0f), (const float*)&Colour::BLUE },
+			{ XMFLOAT3(1.0f, 1.0f, -1.0f), (const float*)&Colour::BLUE },
+			{ XMFLOAT3(1.0f, -1.0f, -1.0f), (const float*)&Colour::BLUE },
+			{ XMFLOAT3(-1.0f, -1.0f, 1.0f), (const float*)&Colour::BLUE },
+			{ XMFLOAT3(-1.0f, 1.0f, -.0f), (const float*)&Colour::BLUE },
+			{ XMFLOAT3(1.0f, 1.0f, 1.0f), (const float*)&Colour::BLUE },
+			{ XMFLOAT3(1.0f, -1.0f, 1.0f), (const float*)&Colour::BLUE },
+		};
+
+		D3D11_BUFFER_DESC vertexBufferDesc;
+		vertexBufferDesc.ByteWidth = sizeof(Vertex) * 8;
+		vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+		vertexBufferDesc.CPUAccessFlags = 0;
+		vertexBufferDesc.MiscFlags = 0;
+		vertexBufferDesc.StructureByteStride = 0;
+		D3D11_SUBRESOURCE_DATA vSubData;
+		vSubData.pSysMem = vertices;
+		HR(m_device->CreateBuffer(&vertexBufferDesc, &vSubData, &m_cubeVB));
+
+		//Create indes buffer
+		UINT indices[] = {
+			//front face
+			0, 1, 2,
+			0, 2, 3,
+			//back face
+			4, 6, 5,
+			4, 7, 6,
+			//left face
+			4, 5, 1,
+			4, 1, 0,
+			//right face
+			3, 2, 6,
+			3, 6, 7,
+			//top face
+			1, 5, 6,
+			1, 6, 2,
+			//bottom face
+			4, 0, 3,
+			4, 3, 7
+		};
+
+		D3D11_BUFFER_DESC indexBufferDesc;
+		indexBufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
+		indexBufferDesc.ByteWidth = sizeof(UINT) * 36;
+		indexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+		indexBufferDesc.CPUAccessFlags = 0;
+		indexBufferDesc.MiscFlags = 0;
+		indexBufferDesc.StructureByteStride = 0;
+		D3D11_SUBRESOURCE_DATA iSubData;
+		iSubData.pSysMem = indices;
+		HR(m_device->CreateBuffer(&indexBufferDesc, &iSubData, &m_cubeIB));
+	}
+
+	bool Graphics::BuildShaders()
+	{
+		DWORD shaderFlags = 0;
+
+	#if defined(DEBUG) || defined(_DEBUG)
+		shaderFlags |= D3D10_SHADER_DEBUG;
+		shaderFlags |= D3D10_SHADER_SKIP_OPTIMIZATION;
+	#endif
+
+		ID3D10Blob *compiledShader = NULL;
+		ID3D10Blob *errorMessages = NULL;
+
+		HRESULT hr = D3DX11CompileFromFile(L"BasicShader.fx", NULL, NULL, NULL, "fx_5_0", shaderFlags, 0, 0, &compiledShader, &errorMessages, NULL);
+
+		if (errorMessages != 0)
+		{
+			MessageBoxA(NULL, (char *)errorMessages->GetBufferPointer(), NULL, 0);
+			errorMessages->Release();
+			errorMessages = NULL;
+		}
+
+		if (FAILED(hr))
+		{
+			HR(hr);
+			return false;
+		}
+
+		return true;
+
 	}
 }

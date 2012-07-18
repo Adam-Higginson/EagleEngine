@@ -84,6 +84,7 @@
     <ClCompile Include="Window.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Colour.h" />
     <ClInclude Include="Config.h" />
     <ClInclude Include="EagleEngineUtil.h" />
     <ClInclude Include="Graphics.h" />
@@ -93,7 +94,7 @@
     <ClInclude Include="Window.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="shader.hlsl" />
+    <None Include="BasicShader.fx" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
