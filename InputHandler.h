@@ -20,13 +20,6 @@ namespace ee
 
 		bool Init();
 
-		void KeyDown(unsigned int key);
-		void KeyUp(unsigned int key);
-
-		void MouseDown(MouseButton button, int x, int y);
-		void MouseUp(MouseButton button, int x, int y);
-		void MouseMove(int x, int y);
-
 		bool IsKeyDown(unsigned int key) const;
 		bool IsKeyUp(unsigned int key) const;
 
@@ -41,9 +34,17 @@ namespace ee
 
 
 	private:
+		friend class Window; //Allows the Window class only to update key states with the message function
 		bool m_keys[256];
 		bool m_mouseButtons[3];
 		int m_mouseX, m_mouseY; //Last known mouse position
+
+		void KeyDown(unsigned int key);
+		void KeyUp(unsigned int key);
+
+		void MouseDown(MouseButton button, int x, int y);
+		void MouseUp(MouseButton button, int x, int y);
+		void MouseMove(int x, int y);
 
 	};
 }

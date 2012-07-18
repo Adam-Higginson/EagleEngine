@@ -28,6 +28,7 @@ namespace ee
 		const std::string& GetFileName() const;
 
 		void SetCurrentLevel(LoggerLevel);
+		void ShouldWriteLevel(bool shouldWrite = true);
 
 		//Log a message. The message is only logged if the current logging level
 		//is higher or equal to the specified logging level
@@ -42,6 +43,7 @@ namespace ee
 		LoggerLevel m_currentLevel;
 		std::ofstream m_logFile;
 		std::string m_fileName;
+		bool m_shouldWriteLevel;
 	};
 }
 

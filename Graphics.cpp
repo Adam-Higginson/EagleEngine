@@ -104,14 +104,103 @@ namespace ee
 		//Now create swap chain
 		HR(dxgiFactory->CreateSwapChain(m_device, &swapDesc, &m_swapChain));
 
-		dxgiDevice->Release();
-		dxgiDevice = NULL;
+		//Stop ALT-ENTER functionality
+		HR(dxgiFactory->MakeWindowAssociation(m_hWnd, DXGI_MWA_NO_WINDOW_CHANGES));
 
-		dxgiAdapter->Release();
-		dxgiAdapter = NULL;
+		//Log how many adapters are found
+		Logger graphicsLog("graphics_info.log", ee::LEVEL_INFO);
+		graphicsLog.Init();
+		graphicsLog.ShouldWriteLevel(false);
 
-		dxgiFactory->Release();
-		dxgiFactory = NULL;
+		UINT i = 0;
+		IDXGIAdapter *currentAdapter = NULL;
+		std::vector<IDXGIAdapter *> adapters;
+		while(dxgiFactory->EnumAdapters(i, &currentAdapter) != DXGI_ERROR_NOT_FOUND)
+		{
+			adapters.push_back(currentAdapter);
+			i++;
+		}
+
+		graphicsLog.Log(("Adapters found: " + IntegerToString((int)i)), ee::LEVEL_INFO);
+
+		i = 0;
+		for (std::vector<IDXGIAdapter *>::iterator iter = adapters.begin(); iter != adapters.end(); iter++)
+		{
+			currentAdapter = *iter;
+			if (currentAdapter->CheckInterfaceSupport(__uuidof(ID3D10Device), NULL) == S_OK)
+				graphicsLog.Log("D3D10 Supported for device: " + IntegerToString((int) i), LEVEL_INFO);
+			i++;
+		}
+
+		IDXGIAdapter *defaultAdapter = adapters.front();
+		std::vector<IDXGIOutput *> outputs;
+		i = 0;
+		IDXGIOutput *currentOutput;
+		while (defaultAdapter->EnumOutputs(i, &currentOutput) != DXGI_ERROR_NOT_FOUND)
+		{
+			outputs.push_back(currentOutput);
+			i++;
+		}
+
+		graphicsLog.Log(("Outputs found for default adapter: " + IntegerToString(i)), LEVEL_INFO);
+
+
+
+		//Write info about each display mode
+		int count = 0;
+		for (std::vector<IDXGIOutput *>::iterator it = outputs.begin(); it != outputs.end(); it++)
+		{
+			IDXGIOutput *currentOutput = *it;
+			UINT num = 0;
+			currentOutput->GetDisplayModeList(DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_ENUM_MODES_INTERLACED, &num, NULL);
+
+			DXGI_MODE_DESC *descs = new DXGI_MODE_DESC[num];
+			currentOutput->GetDisplayModeList(DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_ENUM_MODES_INTERLACED, &num, descs);
+			graphicsLog.Log("For interface:" + IntegerToString(count), LEVEL_INFO);
+			for (int j = 0; j < (int)num; j++)
+			{
+				graphicsLog.Log("	Width: " + IntegerToString((int)descs[j].Width) 
+								+ " Height: " + IntegerToString((int)descs[j].Height) 
+								+ " Refresh: " + IntegerToString((int)descs[j].RefreshRate.Numerator) 
+								+ "/" 
+								+ IntegerToString((int)descs[j].RefreshRate.Denominator), LEVEL_INFO);
+			}
+
+			count++;
+		}
+
+		//Release everything!
+		for (std::vector<IDXGIAdapter *>::iterator iter = adapters.begin(); iter != adapters.end(); iter++)
+		{
+			(*iter)->Release();
+			(*iter) = NULL;
+		}
+
+		for (std::vector<IDXGIOutput *>::iterator iter = outputs.begin(); iter != outputs.end(); iter++)
+		{
+			(*iter)->Release();
+			(*iter) = NULL;
+		}
+
+		graphicsLog.CloseLogger();
+
+		if (dxgiDevice)
+		{
+			dxgiDevice->Release();
+			dxgiDevice = NULL;
+		}
+
+		if (dxgiAdapter)
+		{
+			dxgiAdapter->Release();
+			dxgiAdapter = NULL;
+		}
+
+		if (dxgiFactory)
+		{
+			dxgiFactory->Release();
+			dxgiFactory = NULL;
+		}
 
 		ID3D11Texture2D *backBuffer;
 		HR(m_swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&backBuffer)));
@@ -119,7 +208,7 @@ namespace ee
 		
 		backBuffer->Release();
 
-		//Must rebuild depth and stencil buffer
+		//Build depth and stencil buffer
 		D3D11_TEXTURE2D_DESC depthDesc;
 
 		depthDesc.Width = m_screenWidth;
@@ -156,6 +245,14 @@ namespace ee
 		m_viewport.TopLeftY = 0.0f;
 		m_viewport.Width = static_cast<float>(m_screenWidth);
 		m_viewport.Height = static_cast<float>(m_screenHeight);
+		m_viewport.MinDepth = 0.0f;
+		m_viewport.MaxDepth = 1.0f;
+
+		//Quick test viewport
+		m_viewport.TopLeftX = 100.0f;
+		m_viewport.TopLeftY  = 100.0f;
+		m_viewport.Width = 500.0f;
+		m_viewport.Height = 400.0f;
 		m_viewport.MinDepth = 0.0f;
 		m_viewport.MaxDepth = 1.0f;
 
@@ -238,6 +335,7 @@ namespace ee
 		m_viewport.Height = static_cast<float>(m_screenHeight);
 		m_viewport.MinDepth = 0.0f;
 		m_viewport.MaxDepth = 1.0f;
+
 
 		m_deviceContext->RSSetViewports(1, &m_viewport);
 

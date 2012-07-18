@@ -91,14 +91,14 @@ namespace ee
 			return FALSE;
 		}
 
-		ShowWindow(m_hWnd, nCmdShow);
-		UpdateWindow(m_hWnd);
-		//ShowCursor(FALSE);
-
 		m_graphics = new Graphics(m_hWnd, m_config, m_logger);
 
 		if (!m_graphics->Init())
 			return FALSE;
+
+		ShowWindow(m_hWnd, nCmdShow);
+		UpdateWindow(m_hWnd);
+		//ShowCursor(FALSE);
 
 		/*RECT size;
 		GetWindowRect(m_hWnd, &size);
@@ -158,7 +158,7 @@ namespace ee
 						DrawFrameStats();
 					}
 					m_graphics->UpdateScene(m_timer.GetDeltaTime());
-					m_graphics->DrawScene(0.4f, 0.0f, 0.0f);
+					m_graphics->DrawScene(0.0f, 0.0f, 0.0f);
 
 				}
 				else

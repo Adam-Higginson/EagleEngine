@@ -3,13 +3,16 @@
 namespace ee
 {
 	Logger::Logger()
-		: m_fileName("log.log")
+		: m_fileName("log.log"),
+		  m_shouldWriteLevel(true)
 	{
 		m_currentLevel = LEVEL_INFO;
 	}
 
 	Logger::Logger(const std::string &fileName, LoggerLevel warningLevel)
-		: m_fileName(fileName)
+		: m_fileName(fileName),
+		  m_shouldWriteLevel(true)
+		 
 	{
 		m_currentLevel = warningLevel;
 	}
@@ -50,8 +53,9 @@ namespace ee
 		if (m_logFile.is_open() && (level != LEVEL_NONE) 
 			&& (m_currentLevel != LEVEL_NONE) && (m_currentLevel >= level))
 		{
-			WriteLevel(level);
-			m_logFile << " " << message << std::endl;
+			if (m_shouldWriteLevel)
+				WriteLevel(level);
+			m_logFile << message << std::endl;
 		}
 	}
 
@@ -61,8 +65,9 @@ namespace ee
 		if (m_logFile.is_open() && (level != LEVEL_NONE) 
 			&& (m_currentLevel != LEVEL_NONE) && (m_currentLevel >= level))
 		{
-			WriteLevel(level);
-			m_logFile << " " << message << std::endl;
+			if (m_shouldWriteLevel)
+				WriteLevel(level);
+			m_logFile << message << std::endl;
 		}
 	}
 
@@ -72,6 +77,11 @@ namespace ee
 		{
 			m_logFile.close();
 		}
+	}
+
+	void Logger::ShouldWriteLevel(bool shouldWrite)
+	{
+		m_shouldWriteLevel = shouldWrite;
 	}
 
 	void Logger::WriteLevel(LoggerLevel level)
