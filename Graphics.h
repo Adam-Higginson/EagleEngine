@@ -13,6 +13,7 @@
 #include <d3dx11.h>
 #include <D3DX10.h>
 #include <DxErr.h>
+#include <d3dx11effect.h>
 #include <assert.h>
 #include <vector>
 #include <xnamath.h>
@@ -21,20 +22,7 @@
 #include "Config.h"
 #include "EagleEngineUtil.h"
 #include "Colour.h"
-
-#pragma comment(lib, "dxgi.lib")
-#pragma comment(lib, "d3d11.lib")
-
-#if defined(DEBUG) | defined(_DEBUG)
-#pragma comment(lib, "d3dx11d.lib")
-#pragma comment(lib, "d3dx10d.lib")
-
-#else
-#pragma comment(lib, "d3dx11.lib")
-#pragma comment(lib, "d3dx10.lib")
-#endif
-
-#pragma comment(lib, "dxerr.lib")
+#include "MathsUtil.h"
 
 #if defined(DEBUG) | defined(_DEBUG)
 #ifndef HR 
@@ -78,6 +66,9 @@ namespace ee
 		//Resize the scene
 		void Resize(int newWidth, int newHeight);
 
+		//Check whether device exists
+		bool IsDevice() const;
+
 		float GetAspectRatio() const;
 
 		void Release();
@@ -87,6 +78,8 @@ namespace ee
 		void CreateBuffers();
 		//Builds and compilles shaders
 		bool BuildShaders();
+		//Build the layout of the vertices
+		void BuildVertexLayout();
 
 		//Logger object used for logging info to text file
 		Logger *m_logger;
@@ -122,6 +115,22 @@ namespace ee
 		//Box buffer to hold data about cube
 		ID3D11Buffer *m_cubeVB;
 		ID3D11Buffer *m_cubeIB;
+
+		ID3D11Buffer *m_vertexBuffer;
+		ID3D11Buffer *m_indexBuffer;
+
+		//The effect
+		ID3DX11Effect *m_effect;
+		ID3DX11EffectTechnique *m_technique;
+		ID3DX11EffectMatrixVariable *m_effectWorldViewProj; //World view and projection matrices combined
+
+		//The input layout
+		ID3D11InputLayout *m_inputLayout;
+
+		//Speed of rotation
+		//const float m_rotSpeed = 0.1f;
+		//Angle of rotation
+		float m_zRot;
 	};
 }
 

@@ -67,6 +67,7 @@ namespace ee
 		wndClassEx.lpszClassName = m_windowTitle;
 		wndClassEx.hbrBackground = (HBRUSH)GetStockObject(NULL_BRUSH);
 		wndClassEx.hCursor = LoadCursor(NULL, IDC_ARROW);
+		wndClassEx.hIcon = LoadIcon(0, IDI_APPLICATION);
 
 		//Register the window class
 		if (!RegisterClassEx(&wndClassEx))
@@ -136,6 +137,7 @@ namespace ee
 
 		while (msg.message != WM_QUIT)
 		{
+
 			if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
 			{
 				TranslateMessage(&msg);
@@ -164,14 +166,18 @@ namespace ee
 				else
 				{
 					//Paused
+					//OutputDebugString(L"Paused!\n");
 					Sleep(100);
 				}
 			}
+
 		}
 	}
 
 	LRESULT CALLBACK Window::MessageHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	{
+		//OutputDebugString((LPCWSTR)IntegerToString(msg).c_str());
+		//OutputDebugString(L"\n");
 		switch (msg)
 		{
 			case WM_KEYDOWN:
@@ -183,11 +189,13 @@ namespace ee
 			case WM_ACTIVATE:
 				if (LOWORD(wParam) == WA_INACTIVE)
 				{
+					OutputDebugString(L"Currently inactive!");
 					m_isPaused = TRUE;
 					m_timer.Stop();
 				}
 				else
 				{
+					OutputDebugString(L"Currently active!");
 					m_isPaused = FALSE;
 					m_timer.Start();
 				}
@@ -209,47 +217,59 @@ namespace ee
 				return 0;
 
 			case WM_SIZE:
+				OutputDebugString(L"Entered WM_SIZE\n");
 				m_screenWidth = LOWORD(lParam);
 				m_screenHeight = HIWORD(lParam);
-				if (wParam == SIZE_MAXIMIZED)
+				if (m_graphics->IsDevice())
 				{
-					OutputDebugString(L"Size maximised!");
-					m_isPaused = false;
-					m_fullScreen = TRUE;
-					m_minimised = FALSE;
-				}
-				else if (wParam == SIZE_MINIMIZED)
-				{
-					m_isPaused = true;
-					m_fullScreen = FALSE;
-					m_minimised = TRUE;
-				}
-				else if (wParam == SIZE_RESTORED)
-				{
-					if (m_minimised)
+					if (wParam == SIZE_MAXIMIZED)
 					{
+						MessageBox(0, L"Maximised!", 0, 0);
+						OutputDebugString(L"Size maximised!");
 						m_isPaused = false;
-						m_minimised = false;
+						m_fullScreen = TRUE;
+						m_minimised = FALSE;
 						Resize();
 					}
+					else if (wParam == SIZE_MINIMIZED)
+					{
+						m_isPaused = true;
+						m_fullScreen = FALSE;
+						m_minimised = TRUE;
+					}
+					else if (wParam == SIZE_RESTORED)
+					{
+						if (m_minimised)
+						{
+							OutputDebugString(L"In size restored, restoring from minimised\n");
+							m_isPaused = false;
+							m_minimised = false;
+							Resize();
+						}
 
-					else if (m_fullScreen)
-					{
-						m_isPaused = false;
-						m_fullScreen = false;
-						Resize();
-					}
+						else if (m_fullScreen)
+						{
+							OutputDebugString(L"In size restored, restoring from fullscreen\n");
+							m_isPaused = false;
+							m_fullScreen = false;
+							Resize();
+						}
 					
-					else if (m_isResizing)
-					{
-						//don't do anything
-					}
+						else if (m_isResizing)
+						{
+							OutputDebugString(L"In size restored, currently resizing\n");
+							//don't do anything
+						}
 
-					else
-					{
-						Resize();
+						else
+						{
+							//MessageBox(0, L"Full screen", 0, 0);
+							OutputDebugString(L"API call, i.e else\n");
+							Resize();
+						}
 					}
 				}
+				return 0;
 			//This message is sent when a menu is active and the user presses
 			//a key that isn't a mnemonic or accelerator key
 			case WM_MENUCHAR:
@@ -305,6 +325,7 @@ namespace ee
 	//////////////////
 	void Window::Resize()
 	{
+		OutputDebugString(L"In Window::Resize()\n");
 		m_graphics->Resize(m_screenWidth, m_screenHeight);
 	}
 

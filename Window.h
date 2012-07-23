@@ -10,6 +10,7 @@
 ////////////////////
 #include <Windows.h>
 #include <sstream>
+#include <comdef.h>
 #include "Logger.h"
 #include "Graphics.h"
 #include "InputHandler.h"

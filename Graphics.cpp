@@ -16,6 +16,8 @@ namespace ee
 		XMStoreFloat4x4(&m_world, identityMatrix);
 		XMStoreFloat4x4(&m_view, identityMatrix);
 		XMStoreFloat4x4(&m_proj, identityMatrix);
+
+		ZeroMemory(&m_viewport, sizeof(D3D11_VIEWPORT));
 	}
 
 	Graphics::Graphics(const Graphics &other)
@@ -28,6 +30,9 @@ namespace ee
 
 	BOOL Graphics::Init()
 	{
+		m_zRot = 0.0f;
+		
+
 		UINT createDeviceFlags = 0;
 
 		#if defined(DEBUG) || defined(_DEBUG)
@@ -111,7 +116,7 @@ namespace ee
 		HR(dxgiFactory->CreateSwapChain(m_device, &swapDesc, &m_swapChain));
 
 		//Stop ALT-ENTER functionality
-		HR(dxgiFactory->MakeWindowAssociation(m_hWnd, DXGI_MWA_NO_WINDOW_CHANGES));
+		//HR(dxgiFactory->MakeWindowAssociation(m_hWnd, DXGI_MWA_NO_WINDOW_CHANGES));
 
 		//Log how many adapters are found
 		Logger graphicsLog("graphics_info.log", ee::LEVEL_INFO);
@@ -255,14 +260,19 @@ namespace ee
 		m_viewport.MaxDepth = 1.0f;
 
 		//Quick test viewport
-		m_viewport.TopLeftX = 100.0f;
+		/*m_viewport.TopLeftX = 100.0f;
 		m_viewport.TopLeftY  = 100.0f;
 		m_viewport.Width = 500.0f;
 		m_viewport.Height = 400.0f;
 		m_viewport.MinDepth = 0.0f;
-		m_viewport.MaxDepth = 1.0f;
+		m_viewport.MaxDepth = 1.0f;*/
 
 		m_deviceContext->RSSetViewports(1, &m_viewport);
+
+		CreateBuffers();
+		if (!BuildShaders())
+			return FALSE;
+		BuildVertexLayout();
 
 		return TRUE;
 
@@ -271,6 +281,13 @@ namespace ee
 	void Graphics::UpdateScene(float elapsedTime)
 	{
 		//TODO update scene
+		//Build view matrix
+		XMVECTOR position = XMVectorSet(5.0f, 5.0f, 5.0f, 1.0f);
+		XMVECTOR target = XMVectorZero();
+		XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+
+		XMMATRIX view = XMMatrixLookAtLH(position, target, up);
+		XMStoreFloat4x4(&m_view, view);
 	}
 
 	void Graphics::DrawScene(float r, float g, float b)
@@ -279,11 +296,41 @@ namespace ee
 
 		m_deviceContext->ClearDepthStencilView(m_depthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 
+		m_deviceContext->IASetInputLayout(m_inputLayout);
+		m_deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+		UINT stride = sizeof(Vertex);
+		UINT offset = 0;
+
+		m_deviceContext->IASetVertexBuffers(0, 1, &m_cubeVB, &stride, &offset);
+		m_deviceContext->IASetIndexBuffer(m_cubeIB, DXGI_FORMAT_R32_UINT, 0);
+
+		//Constants
+		XMMATRIX world = XMLoadFloat4x4(&m_world);
+		XMMATRIX view = XMLoadFloat4x4(&m_view);
+		XMMATRIX proj = XMLoadFloat4x4(&m_proj);
+		XMMATRIX worldViewProj = world * view * proj;
+
+		m_effectWorldViewProj->SetMatrix(reinterpret_cast<float *>(&worldViewProj));
+
+		D3DX11_TECHNIQUE_DESC techDesc;
+		m_technique->GetDesc(&techDesc);
+		for (UINT pass = 0; pass < techDesc.Passes; ++pass)
+		{
+			m_technique->GetPassByIndex(pass)->Apply(0, m_deviceContext);
+
+			//Draw 36 indices
+			m_deviceContext->DrawIndexed(36, 0, 0);
+		}
+		//DRAWING
+
+
 		HR(m_swapChain->Present(0, 0));
 	}
 
 	void Graphics::Resize(int newWidth, int newHeight)
 	{
+		OutputDebugString(L"In Graphics::Resize\n");
 		m_screenWidth = newWidth;
 		m_screenHeight = newHeight;
 
@@ -345,6 +392,13 @@ namespace ee
 
 		m_deviceContext->RSSetViewports(1, &m_viewport);
 
+		//Update aspect ratio and recompute projection matrix
+		//45 degree FOV, near at 1.0f, far at 1000.0f
+		XMMATRIX P = XMMatrixPerspectiveFovLH(0.25f * MathsUtil::PI, GetAspectRatio(), 1.0f, 1000.0f);
+		XMStoreFloat4x4(&m_proj, P);
+		
+		OutputDebugString(L"Finished Graphics::Resize\n");
+
 	}
 
 	float Graphics::GetAspectRatio() const
@@ -354,6 +408,20 @@ namespace ee
 
 	void Graphics::Release()
 	{
+
+		if (m_cubeVB)
+		{
+			m_cubeVB->Release();
+			m_cubeVB = NULL;
+		}
+
+		if (m_cubeIB)
+		{
+			m_cubeIB->Release();
+			m_cubeIB = NULL;
+		}
+
+
 		if (m_swapChain)
 		{
 			m_swapChain->SetFullscreenState(FALSE, NULL);
@@ -391,6 +459,23 @@ namespace ee
 			m_depthStencilView->Release();
 			m_depthStencilView = NULL;
 		}
+
+		if (m_effect)
+		{
+			m_effect->Release();
+			m_effect = NULL;
+		}
+
+		if (m_inputLayout)
+		{
+			m_inputLayout->Release();
+			m_inputLayout = NULL;
+		}
+	}
+
+	bool Graphics::IsDevice() const
+	{
+		return m_device != NULL;
 	}
 
 	////////////////////////
@@ -403,16 +488,17 @@ namespace ee
 		Vertex vertices[] =
 		{
 			{ XMFLOAT3(-1.0f, -1.0f, -1.0f), (const float*)&Colour::BLUE },
-			{ XMFLOAT3(-1.0f, 1.0f, -1.0f), (const float*)&Colour::BLUE },
-			{ XMFLOAT3(1.0f, 1.0f, -1.0f), (const float*)&Colour::BLUE },
-			{ XMFLOAT3(1.0f, -1.0f, -1.0f), (const float*)&Colour::BLUE },
-			{ XMFLOAT3(-1.0f, -1.0f, 1.0f), (const float*)&Colour::BLUE },
-			{ XMFLOAT3(-1.0f, 1.0f, -.0f), (const float*)&Colour::BLUE },
-			{ XMFLOAT3(1.0f, 1.0f, 1.0f), (const float*)&Colour::BLUE },
-			{ XMFLOAT3(1.0f, -1.0f, 1.0f), (const float*)&Colour::BLUE },
+			{ XMFLOAT3(-1.0f, 1.0f, -1.0f), (const float*)&Colour::RED },
+			{ XMFLOAT3(1.0f, 1.0f, -1.0f), (const float*)&Colour::GREEN },
+			{ XMFLOAT3(1.0f, -1.0f, -1.0f), (const float*)&Colour::RED },
+			{ XMFLOAT3(-1.0f, -1.0f, 1.0f), (const float*)&Colour::GREEN },
+			{ XMFLOAT3(-1.0f, 1.0f, 1.0f), (const float*)&Colour::BLUE },
+			{ XMFLOAT3(1.0f, 1.0f, 1.0f), (const float*)&Colour::RED },
+			{ XMFLOAT3(1.0f, -1.0f, 1.0f), (const float*)&Colour::GREEN },
 		};
 
 		D3D11_BUFFER_DESC vertexBufferDesc;
+		vertexBufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
 		vertexBufferDesc.ByteWidth = sizeof(Vertex) * 8;
 		vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 		vertexBufferDesc.CPUAccessFlags = 0;
@@ -479,11 +565,41 @@ namespace ee
 
 		if (FAILED(hr))
 		{
-			HR(hr);
+			DXTrace(__FILE__, (DWORD)__LINE__, hr, L"D3DX11CompileFromFile", true);
 			return false;
 		}
 
+		
+		HR(D3DX11CreateEffectFromMemory(compiledShader->GetBufferPointer(), 
+									    compiledShader->GetBufferSize(), 
+										0, m_device, &m_effect));
+
+		//Release compiled shader
+		if (compiledShader)
+		{
+			compiledShader->Release();
+			compiledShader = NULL;
+		}
+
+		m_technique = m_effect->GetTechniqueByName("ColorTech");
+		m_effectWorldViewProj = m_effect->GetVariableByName("gWorldViewProj")->AsMatrix();
+
 		return true;
 
+	}
+
+	void Graphics::BuildVertexLayout()
+	{
+		//Describe the vertex
+		D3D11_INPUT_ELEMENT_DESC vertexDesc[] =
+		{
+			{"POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
+			{"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0}
+		};
+
+		//Create input layout
+		D3DX11_PASS_DESC passDesc;
+		m_technique->GetPassByIndex(0)->GetDesc(&passDesc);
+		HR(m_device->CreateInputLayout(vertexDesc, 2, passDesc.pIAInputSignature, passDesc.IAInputSignatureSize, &m_inputLayout));
 	}
 }

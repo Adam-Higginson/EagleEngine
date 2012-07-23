@@ -39,6 +39,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
+    <LibraryPath>C:\Users\Adam\Documents\DirectX Demo Stuff\Code\Common;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
@@ -54,6 +55,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>d3d11.lib;d3dx11d.lib;D3DCompiler.lib;Effects11d.lib;dxerr.lib;dxgi.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -76,6 +78,7 @@
   <ItemGroup>
     <ClCompile Include="Config.cpp" />
     <ClCompile Include="EagleEngineUtil.cpp" />
+    <ClCompile Include="GeometryBuilder.cpp" />
     <ClCompile Include="Graphics.cpp" />
     <ClCompile Include="InputHandler.cpp" />
     <ClCompile Include="Logger.cpp" />
@@ -87,9 +90,11 @@
     <ClInclude Include="Colour.h" />
     <ClInclude Include="Config.h" />
     <ClInclude Include="EagleEngineUtil.h" />
+    <ClInclude Include="GeometryBuilder.h" />
     <ClInclude Include="Graphics.h" />
     <ClInclude Include="InputHandler.h" />
     <ClInclude Include="Logger.h" />
+    <ClInclude Include="MathsUtil.h" />
     <ClInclude Include="Timer.h" />
     <ClInclude Include="Window.h" />
   </ItemGroup>

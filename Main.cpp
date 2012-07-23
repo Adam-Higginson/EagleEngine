@@ -72,7 +72,7 @@ int WINAPI WinMain(HINSTANCE hInstance,
 	if (!window->Init(nCmdShow))
 		return -1;
 
-	OutputDebugString(L"Window creation success!\n");
+	//OutputDebugString(L"Window creation success!\n");
 	logger->Log("Window creation success", ee::LEVEL_INFO);
 
 	window->Run();
