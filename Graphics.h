@@ -23,6 +23,7 @@
 #include "EagleEngineUtil.h"
 #include "Colour.h"
 #include "MathsUtil.h"
+#include "GeometryBuilder.h"
 
 #if defined(DEBUG) | defined(_DEBUG)
 #ifndef HR 
@@ -71,6 +72,9 @@ namespace ee
 
 		float GetAspectRatio() const;
 
+		//Toggle wireframe
+		void ToggleWireframe();
+
 		void Release();
 
 	private:
@@ -80,6 +84,8 @@ namespace ee
 		bool BuildShaders();
 		//Build the layout of the vertices
 		void BuildVertexLayout();
+		//Build world matrices for objects		
+		void BuildMatrices();
 
 		//Logger object used for logging info to text file
 		Logger *m_logger;
@@ -90,6 +96,8 @@ namespace ee
 		BOOL m_fullScreen;
 		//Whether 4x msaa is enabled
 		BOOL m_is4xMsaa;
+		//Whether wireframe mode is enabled
+		BOOL m_isWireframe;
 		//The swap chain
 		IDXGISwapChain *m_swapChain;
 		//Device
@@ -112,10 +120,11 @@ namespace ee
 		XMFLOAT4X4 m_view;
 		XMFLOAT4X4 m_proj;
 
-		//Box buffer to hold data about cube
-		ID3D11Buffer *m_cubeVB;
-		ID3D11Buffer *m_cubeIB;
+		//World matrices for objects
+		XMFLOAT4X4 m_boxWorld;
+		XMFLOAT4X4 m_hillsWorld;
 
+		//Vertex and index buffers
 		ID3D11Buffer *m_vertexBuffer;
 		ID3D11Buffer *m_indexBuffer;
 
@@ -131,6 +140,19 @@ namespace ee
 		//const float m_rotSpeed = 0.1f;
 		//Angle of rotation
 		float m_zRot;
+
+		//Offsets for vertex and index buffers
+		int m_boxVertexOffset;
+		int m_hillsVertexOffset;
+
+		UINT m_boxIndexCount;
+		UINT m_hillsIndexCount;
+
+		UINT m_boxIndexOffset;
+		UINT m_hillsIndexOffset;
+
+		//Wireframe raster state
+		ID3D11RasterizerState *m_wireframeRS;
 	};
 }
 

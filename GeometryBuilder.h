@@ -9,6 +9,9 @@
 #include <Windows.h>
 #include <xnamath.h>
 
+#include "EagleEngineUtil.h"
+#include "Logger.h"
+
 namespace ee
 {
 	class GeometryBuilder
@@ -43,8 +46,8 @@ namespace ee
 		};
 
 		void CreateCube(float length, MeshData &meshData);
+		void CreateBox(float width, float height, float depth, MeshData &meshData);
 		void CreatePlane(float width, float depth, UINT m, UINT n, MeshData &meshData);
-
 	};
 }
 

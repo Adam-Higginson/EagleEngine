@@ -10,12 +10,7 @@ namespace ee
 		m_screenHeight = config->GetScreenHeight();
 		m_is4xMsaa = config->Get4xMsaa();
 		m_logger = logger;
-
-		//Load world, view and projection matrices
-		XMMATRIX identityMatrix = XMMatrixIdentity();
-		XMStoreFloat4x4(&m_world, identityMatrix);
-		XMStoreFloat4x4(&m_view, identityMatrix);
-		XMStoreFloat4x4(&m_proj, identityMatrix);
+		m_isWireframe = FALSE;
 
 		ZeroMemory(&m_viewport, sizeof(D3D11_VIEWPORT));
 	}
@@ -30,9 +25,6 @@ namespace ee
 
 	BOOL Graphics::Init()
 	{
-		m_zRot = 0.0f;
-		
-
 		UINT createDeviceFlags = 0;
 
 		#if defined(DEBUG) || defined(_DEBUG)
@@ -269,10 +261,21 @@ namespace ee
 
 		m_deviceContext->RSSetViewports(1, &m_viewport);
 
+		//Build wireframe raster state
+		D3D11_RASTERIZER_DESC wireframeDesc;
+		ZeroMemory(&wireframeDesc, sizeof(D3D11_RASTERIZER_DESC));
+		wireframeDesc.FillMode = D3D11_FILL_WIREFRAME;
+		wireframeDesc.CullMode = D3D11_CULL_BACK;
+		wireframeDesc.FrontCounterClockwise = false;
+		wireframeDesc.DepthClipEnable = true;
+
+		HR(m_device->CreateRasterizerState(&wireframeDesc, &m_wireframeRS));
+
 		CreateBuffers();
 		if (!BuildShaders())
 			return FALSE;
 		BuildVertexLayout();
+		BuildMatrices();
 
 		return TRUE;
 
@@ -282,7 +285,7 @@ namespace ee
 	{
 		//TODO update scene
 		//Build view matrix
-		XMVECTOR position = XMVectorSet(5.0f, 5.0f, 5.0f, 1.0f);
+		XMVECTOR position = XMVectorSet(0.0f, 100.0f, 90.0f, 1.0f);
 		XMVECTOR target = XMVectorZero();
 		XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 
@@ -293,37 +296,42 @@ namespace ee
 	void Graphics::DrawScene(float r, float g, float b)
 	{
 		m_deviceContext->ClearRenderTargetView(m_backBuffer, D3DXCOLOR(r, g, b, 1.0f));
-
 		m_deviceContext->ClearDepthStencilView(m_depthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 
 		m_deviceContext->IASetInputLayout(m_inputLayout);
 		m_deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
+		if (m_isWireframe)
+			m_deviceContext->RSSetState(m_wireframeRS);
+		else
+			m_deviceContext->RSSetState(NULL);
+
 		UINT stride = sizeof(Vertex);
 		UINT offset = 0;
-
-		m_deviceContext->IASetVertexBuffers(0, 1, &m_cubeVB, &stride, &offset);
-		m_deviceContext->IASetIndexBuffer(m_cubeIB, DXGI_FORMAT_R32_UINT, 0);
+		m_deviceContext->IASetVertexBuffers(0, 1, &m_vertexBuffer, &stride, &offset);
+		m_deviceContext->IASetIndexBuffer(m_indexBuffer, DXGI_FORMAT_R32_UINT, 0);
 
 		//Constants
-		XMMATRIX world = XMLoadFloat4x4(&m_world);
 		XMMATRIX view = XMLoadFloat4x4(&m_view);
 		XMMATRIX proj = XMLoadFloat4x4(&m_proj);
-		XMMATRIX worldViewProj = world * view * proj;
-
-		m_effectWorldViewProj->SetMatrix(reinterpret_cast<float *>(&worldViewProj));
+		XMMATRIX viewProj = view * proj;
 
 		D3DX11_TECHNIQUE_DESC techDesc;
 		m_technique->GetDesc(&techDesc);
 		for (UINT pass = 0; pass < techDesc.Passes; ++pass)
 		{
+			//Draw hills
+			XMMATRIX world = XMLoadFloat4x4(&m_hillsWorld);
+			m_effectWorldViewProj->SetMatrix(reinterpret_cast<float *>(&(world * viewProj)));
 			m_technique->GetPassByIndex(pass)->Apply(0, m_deviceContext);
+			m_deviceContext->DrawIndexed(m_hillsIndexCount, m_hillsIndexOffset, m_hillsVertexOffset);
 
-			//Draw 36 indices
-			m_deviceContext->DrawIndexed(36, 0, 0);
+			//Draw box
+			world = XMLoadFloat4x4(&m_boxWorld);
+			m_effectWorldViewProj->SetMatrix(reinterpret_cast<float *>(&(world * viewProj)));
+			m_technique->GetPassByIndex(pass)->Apply(0, m_deviceContext);
+			m_deviceContext->DrawIndexed(m_boxIndexCount, m_boxIndexOffset, m_boxVertexOffset);
 		}
-		//DRAWING
-
 
 		HR(m_swapChain->Present(0, 0));
 	}
@@ -409,16 +417,16 @@ namespace ee
 	void Graphics::Release()
 	{
 
-		if (m_cubeVB)
+		if (m_vertexBuffer)
 		{
-			m_cubeVB->Release();
-			m_cubeVB = NULL;
+			m_vertexBuffer->Release();
+			m_vertexBuffer = NULL;
 		}
 
-		if (m_cubeIB)
+		if (m_indexBuffer)
 		{
-			m_cubeIB->Release();
-			m_cubeIB = NULL;
+			m_indexBuffer->Release();
+			m_indexBuffer = NULL;
 		}
 
 
@@ -471,6 +479,12 @@ namespace ee
 			m_inputLayout->Release();
 			m_inputLayout = NULL;
 		}
+
+		if (m_wireframeRS)
+		{
+			m_wireframeRS->Release();
+			m_wireframeRS = NULL;
+		}
 	}
 
 	bool Graphics::IsDevice() const
@@ -478,68 +492,104 @@ namespace ee
 		return m_device != NULL;
 	}
 
+	void Graphics::ToggleWireframe()
+	{
+		m_isWireframe = !m_isWireframe;
+	}
+
 	////////////////////////
 	//PRIVATE FUNCTIONS
 	///////////////////////
 	void Graphics::CreateBuffers()
 	{
-		//Create vertex buffer
-		//Array represents a cube
-		Vertex vertices[] =
+		//Create the cube in main memory
+		GeometryBuilder builder;
+		GeometryBuilder::MeshData cubeData;
+		GeometryBuilder::MeshData hillData;
+		builder.CreateBox(1.0f, 1.0f, 1.0f, cubeData);
+		builder.CreatePlane(160.0f, 160.0f, 50, 50, hillData);
+
+		//Cache vertex offset for each object
+		m_boxVertexOffset = 0;
+		m_hillsVertexOffset = cubeData.vertices.size();
+
+		//Cache index count of each object
+		m_boxIndexCount = cubeData.indices.size();
+		m_hillsIndexCount = hillData.indices.size();
+
+		//Cache the starting index for each object in index buffer
+		m_boxIndexOffset = 0;
+		m_hillsIndexOffset = m_boxIndexCount;
+
+		UINT totalVertices = cubeData.vertices.size() + hillData.vertices.size();
+		UINT totalIndices = m_boxIndexCount + m_hillsIndexCount;
+
+		//A vector of all the vertices into one vertex buffer
+		std::vector<Vertex> vertices(totalVertices);
+
+		UINT k = 0;
+		for (size_t i = 0; i < cubeData.vertices.size(); i++, k++)
 		{
-			{ XMFLOAT3(-1.0f, -1.0f, -1.0f), (const float*)&Colour::BLUE },
-			{ XMFLOAT3(-1.0f, 1.0f, -1.0f), (const float*)&Colour::RED },
-			{ XMFLOAT3(1.0f, 1.0f, -1.0f), (const float*)&Colour::GREEN },
-			{ XMFLOAT3(1.0f, -1.0f, -1.0f), (const float*)&Colour::RED },
-			{ XMFLOAT3(-1.0f, -1.0f, 1.0f), (const float*)&Colour::GREEN },
-			{ XMFLOAT3(-1.0f, 1.0f, 1.0f), (const float*)&Colour::BLUE },
-			{ XMFLOAT3(1.0f, 1.0f, 1.0f), (const float*)&Colour::RED },
-			{ XMFLOAT3(1.0f, -1.0f, 1.0f), (const float*)&Colour::GREEN },
-		};
+			XMFLOAT3 pos = cubeData.vertices[i].position;
+			vertices[k].pos = pos;
+
+			vertices[k].colour = (const float *)&Colour::BLUE;
+		}
+
+		for (size_t i = 0; i < hillData.vertices.size(); i++, k++)
+		{
+			XMFLOAT3 pos = hillData.vertices[i].position;
+			pos.y = 0.3f * (pos.z * sinf(0.1f * pos.x) + pos.x * cosf(0.1f * pos.z));
+			vertices[k].pos = pos;
+			
+			if (pos.y < -10.0f)
+			{
+				vertices[k].colour = (const float *)&Colour::SANDY;
+			}
+			else if (pos.y < 5.0f)
+			{
+				vertices[k].colour = (const float *)&Colour::LIGHT_YELLOW;
+			}
+			else if (pos.y < 12.0f)
+			{
+				vertices[k].colour = (const float *)&Colour::DARK_YELLOW;
+			}
+			else if (pos.y < 20.0f)
+			{
+				vertices[k].colour = (const float *)&Colour::BROWN;
+			}
+			else
+			{
+				vertices[k].colour = (const float *)&Colour::WHITE;
+			}
+		}
 
 		D3D11_BUFFER_DESC vertexBufferDesc;
 		vertexBufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
-		vertexBufferDesc.ByteWidth = sizeof(Vertex) * 8;
+		vertexBufferDesc.ByteWidth = sizeof(Vertex) * totalVertices;
 		vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 		vertexBufferDesc.CPUAccessFlags = 0;
 		vertexBufferDesc.MiscFlags = 0;
 		vertexBufferDesc.StructureByteStride = 0;
 		D3D11_SUBRESOURCE_DATA vSubData;
-		vSubData.pSysMem = vertices;
-		HR(m_device->CreateBuffer(&vertexBufferDesc, &vSubData, &m_cubeVB));
+		vSubData.pSysMem = &vertices[0];
+		HR(m_device->CreateBuffer(&vertexBufferDesc, &vSubData, &m_vertexBuffer));
 
-		//Create indes buffer
-		UINT indices[] = {
-			//front face
-			0, 1, 2,
-			0, 2, 3,
-			//back face
-			4, 6, 5,
-			4, 7, 6,
-			//left face
-			4, 5, 1,
-			4, 1, 0,
-			//right face
-			3, 2, 6,
-			3, 6, 7,
-			//top face
-			1, 5, 6,
-			1, 6, 2,
-			//bottom face
-			4, 0, 3,
-			4, 3, 7
-		};
+		//Pack the indices of all meshes into one index buffer
+		std::vector<UINT> indices;
+		indices.insert(indices.end(), cubeData.indices.begin(), cubeData.indices.end());
+		indices.insert(indices.end(), hillData.indices.begin(), hillData.indices.end());
 
 		D3D11_BUFFER_DESC indexBufferDesc;
 		indexBufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
-		indexBufferDesc.ByteWidth = sizeof(UINT) * 36;
+		indexBufferDesc.ByteWidth = sizeof(UINT) * totalIndices;
 		indexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
 		indexBufferDesc.CPUAccessFlags = 0;
 		indexBufferDesc.MiscFlags = 0;
 		indexBufferDesc.StructureByteStride = 0;
 		D3D11_SUBRESOURCE_DATA iSubData;
-		iSubData.pSysMem = indices;
-		HR(m_device->CreateBuffer(&indexBufferDesc, &iSubData, &m_cubeIB));
+		iSubData.pSysMem = &indices[0];
+		HR(m_device->CreateBuffer(&indexBufferDesc, &iSubData, &m_indexBuffer));
 	}
 
 	bool Graphics::BuildShaders()
@@ -601,5 +651,18 @@ namespace ee
 		D3DX11_PASS_DESC passDesc;
 		m_technique->GetPassByIndex(0)->GetDesc(&passDesc);
 		HR(m_device->CreateInputLayout(vertexDesc, 2, passDesc.pIAInputSignature, passDesc.IAInputSignatureSize, &m_inputLayout));
+	}
+
+	void Graphics::BuildMatrices()
+	{
+		//Load world, view and projection matrices
+		XMMATRIX identityMatrix = XMMatrixIdentity();
+		XMStoreFloat4x4(&m_hillsWorld, identityMatrix);
+		XMStoreFloat4x4(&m_view, identityMatrix);
+		XMStoreFloat4x4(&m_proj, identityMatrix);
+
+		XMMATRIX boxScale = XMMatrixScaling(2.0f, 2.0f, 2.0f);
+		XMMATRIX boxOffset = XMMatrixTranslation(0.0f, 0.5f, 0.0f);
+		XMStoreFloat4x4(&m_boxWorld, XMMatrixMultiply(boxScale, boxOffset));
 	}
 }

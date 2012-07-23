@@ -29,4 +29,11 @@ namespace ee
 		int result;
 		return iss >> result ? result : 0;
 	}
+
+	const std::wstring ts2ws(const std::basic_string<TCHAR> &s)
+	{
+		std::basic_ostringstream<TCHAR> buf;
+		buf << s;
+		return buf.str();
+	}
 }

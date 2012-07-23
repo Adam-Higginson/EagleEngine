@@ -135,6 +135,7 @@ namespace ee
 		//Reset the timer
 		m_timer.Reset();
 
+		bool spaceDown = false;
 		while (msg.message != WM_QUIT)
 		{
 
@@ -159,6 +160,19 @@ namespace ee
 					{
 						DrawFrameStats();
 					}
+
+					if (m_inputHandler->IsKeyDown(VK_SPACE))
+					{
+						spaceDown = true;
+					}
+					if (m_inputHandler->IsKeyUp(VK_SPACE))
+					{
+						if (spaceDown)
+							m_graphics->ToggleWireframe();
+
+						spaceDown = false;
+					}
+
 					m_graphics->UpdateScene(m_timer.GetDeltaTime());
 					m_graphics->DrawScene(0.0f, 0.0f, 0.0f);
 
