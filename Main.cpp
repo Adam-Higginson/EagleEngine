@@ -12,6 +12,10 @@
 #include <fstream>
 #include <string>
 #include <xnamath.h>
+#define _CRTDBG_MAP_ALLOC
+#include <stdlib.h>
+#include <crtdbg.h>
+
 
 #define ERROR_BOX(X) MessageBox(NULL, X, L"Error", MB_ICONERROR | MB_OK)
 
@@ -19,6 +23,9 @@ int WINAPI WinMain(HINSTANCE hInstance,
 				   HINSTANCE hPrevInstance, 
 				   LPSTR lpCmdLine, int nCmdShow)
 {
+#if defined(DEBUG) | defined(_DEBUG)
+	_CrtSetDbgFlag( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
+#endif
 	//Logger object, currently logging everything
 	ee::Logger *logger = new ee::Logger("EagleEngine.log", ee::LEVEL_SEVERE);
 	if(!logger->Init())
