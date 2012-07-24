@@ -146,12 +146,6 @@ namespace ee
 			}
 			else
 			{
-				//Pause key, toggle paused
-				/*if (m_inputHandler->IsKeyDown(VK_ESCAPE))
-				{
-					m_isPaused = !m_isPaused;
-				}*/
-
 				m_timer.Tick();
 
 				if (!m_isPaused)
@@ -171,6 +165,12 @@ namespace ee
 							m_graphics->ToggleWireframe();
 
 						spaceDown = false;
+					}
+
+					//Pause key, toggle paused
+					if (m_inputHandler->IsKeyDown(VK_ESCAPE))
+					{
+						break;
 					}
 
 					m_graphics->UpdateScene(m_timer.GetDeltaTime());
@@ -238,7 +238,6 @@ namespace ee
 				{
 					if (wParam == SIZE_MAXIMIZED)
 					{
-						MessageBox(0, L"Maximised!", 0, 0);
 						OutputDebugString(L"Size maximised!");
 						m_isPaused = false;
 						m_fullScreen = TRUE;
@@ -301,6 +300,7 @@ namespace ee
 			}
 			case WM_LBUTTONDOWN:
 				m_inputHandler->MouseDown(ee::MOUSE_LEFT, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+				m_graphics->MouseDown(MOUSE_LEFT, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
 				return 0;
 
 			case WM_MBUTTONDOWN:
@@ -313,6 +313,7 @@ namespace ee
 
 			case WM_LBUTTONUP:
 				m_inputHandler->MouseUp(ee::MOUSE_LEFT, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+				m_graphics->MouseUp(MOUSE_LEFT, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
 				return 0;
 
 			case WM_MBUTTONUP:
@@ -325,6 +326,7 @@ namespace ee
 
 			case WM_MOUSEMOVE:
 				m_inputHandler->MouseMove(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+				m_graphics->MouseMoved(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
 				return 0;
 
 			default:

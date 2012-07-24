@@ -123,6 +123,7 @@ namespace ee
 			this->m_vSync = false;
 			this->m_screenWidth = 800;
 			this->m_screenHeight = 600;
+			this->m_4xMsaa = true;
 		}
 
 

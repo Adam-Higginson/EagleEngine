@@ -1,8 +1,8 @@
 //Helper class to help represent colour
 #pragma once
 
-#ifndef _H_COLOUR_H_
-#define _H_COLOUR_H_
+#ifndef _COLOUR_H_
+#define _COLOUR_H_
 
 namespace ee
 {
@@ -16,7 +16,7 @@ namespace ee
 		XMGLOBALCONST XMVECTORF32 PURPLE = {1.0f, 0.0f, 1.0f, 1.0f};
 		XMGLOBALCONST XMVECTORF32 YELLOW = {1.0f, 1.0f, 0.0f, 1.0f};
 		XMGLOBALCONST XMVECTORF32 SANDY = {1.0f, 0.96f, 0.62f, 1.0f};
-		XMGLOBALCONST XMVECTORF32 LIGHT_YELLOW = {0.48, 0.77f, 0.46f, 1.0f};
+		XMGLOBALCONST XMVECTORF32 LIGHT_YELLOW = {0.48f, 0.77f, 0.46f, 1.0f};
 		XMGLOBALCONST XMVECTORF32 DARK_YELLOW = {0.1f, 0.48f, 0.19f, 1.0f};
 		XMGLOBALCONST XMVECTORF32 BROWN = {0.45f, 0.39f, 0.34f, 1.0f};
 	}

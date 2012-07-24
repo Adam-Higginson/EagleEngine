@@ -3,6 +3,7 @@
 namespace ee
 {
 	Graphics::Graphics(HWND hWnd, Config *config, Logger *logger)
+		: m_theta(1.5f * MathsUtil::PI), m_phi(0.1f * MathsUtil::PI), m_radius(15.0f)
 	{
 		m_hWnd = hWnd;
 		m_fullScreen = config->GetFullScreen();
@@ -11,6 +12,7 @@ namespace ee
 		m_is4xMsaa = config->Get4xMsaa();
 		m_logger = logger;
 		m_isWireframe = FALSE;
+		m_lastMousePos.x = m_lastMousePos.y = 0;
 
 		ZeroMemory(&m_viewport, sizeof(D3D11_VIEWPORT));
 	}
@@ -283,9 +285,12 @@ namespace ee
 
 	void Graphics::UpdateScene(float elapsedTime)
 	{
-		//TODO update scene
+		float x = m_radius * sinf(m_phi) * cosf(m_theta);
+		float y = m_radius * cosf(m_phi);
+		float z = m_radius * sinf(m_phi) * sinf(m_theta);
+
 		//Build view matrix
-		XMVECTOR position = XMVectorSet(0.0f, 100.0f, 90.0f, 1.0f);
+		XMVECTOR position = XMVectorSet(x, y, z, 1.0f);
 		XMVECTOR target = XMVectorZero();
 		XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 
@@ -495,6 +500,38 @@ namespace ee
 	void Graphics::ToggleWireframe()
 	{
 		m_isWireframe = !m_isWireframe;
+	}
+
+	void Graphics::MouseDown(MouseButton button, int x, int y)
+	{
+		m_lastMousePos.x = x;
+		m_lastMousePos.y = y;
+
+		SetCapture(m_hWnd);
+		ShowCursor(FALSE);
+	}
+
+	void Graphics::MouseUp(MouseButton button, int x, int y)
+	{
+		ReleaseCapture();
+		ShowCursor(TRUE);
+	}
+
+	void Graphics::MouseMoved(WPARAM button, int x, int y)
+	{
+		if ((button & MK_LBUTTON) != 0)
+		{
+			float dx = XMConvertToRadians(0.25f * static_cast<float>(x - m_lastMousePos.x));
+			float dy = XMConvertToRadians(0.25f * static_cast<float>(y - m_lastMousePos.y));
+
+			m_theta += dx;
+			m_phi += dy;
+	
+			m_phi = MathsUtil::Clamp(m_phi, 0.1f, MathsUtil::PI - 0.1f);
+		}
+
+		m_lastMousePos.x = x;
+		m_lastMousePos.y = y;
 	}
 
 	////////////////////////

@@ -24,6 +24,7 @@
 #include "Colour.h"
 #include "MathsUtil.h"
 #include "GeometryBuilder.h"
+#include "InputHandler.h"
 
 #if defined(DEBUG) | defined(_DEBUG)
 #ifndef HR 
@@ -74,6 +75,13 @@ namespace ee
 
 		//Toggle wireframe
 		void ToggleWireframe();
+
+		//Mouse is down
+		void MouseDown(MouseButton button, int x, int y);
+		//Mouse is up
+		void MouseUp(MouseButton button, int x, int y);
+		//Mouse moved
+		void MouseMoved(WPARAM button, int x, int y);
 
 		void Release();
 
@@ -153,6 +161,12 @@ namespace ee
 
 		//Wireframe raster state
 		ID3D11RasterizerState *m_wireframeRS;
+
+		//Rotation angles
+		float m_theta, m_phi, m_radius;
+
+		//last mouse pos
+		POINT m_lastMousePos;
 	};
 }
 
