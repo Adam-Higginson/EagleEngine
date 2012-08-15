@@ -17,6 +17,8 @@
 #include <assert.h>
 #include <vector>
 #include <xnamath.h>
+#include <fstream>
+#include <sstream>
 
 #include "Logger.h"
 #include "Config.h"
@@ -25,6 +27,11 @@
 #include "MathsUtil.h"
 #include "GeometryBuilder.h"
 #include "InputHandler.h"
+#include "ModelLoader.h"
+#include "Light.h"
+#include "Material.h"
+#include "EffectsUtil.h"
+#include "Vertex.h"
 
 #if defined(DEBUG) | defined(_DEBUG)
 #ifndef HR 
@@ -46,13 +53,6 @@
 
 namespace ee
 {
-	//Basic Vertex struct
-	struct Vertex
-	{
-		XMFLOAT3 pos;
-		XMFLOAT4 colour;
-	};
-
 	class Graphics
 	{
 	public:
@@ -67,33 +67,31 @@ namespace ee
 		void DrawScene(float r, float g, float b);
 		//Resize the scene
 		void Resize(int newWidth, int newHeight);
-
 		//Check whether device exists
 		bool IsDevice() const;
-
 		float GetAspectRatio() const;
-
 		//Toggle wireframe
 		void ToggleWireframe();
-
 		//Mouse is down
 		void MouseDown(MouseButton button, int x, int y);
 		//Mouse is up
 		void MouseUp(MouseButton button, int x, int y);
 		//Mouse moved
 		void MouseMoved(WPARAM button, int x, int y);
-
+		//Toggle flashlight
+		void ToggleFlashlight();
+		//Call after no longer needed, e.g at window close time
 		void Release();
 
 	private:
 		//Creates the vertex and index buffers
 		void CreateBuffers();
-		//Builds and compilles shaders
-		bool BuildShaders();
-		//Build the layout of the vertices
-		void BuildVertexLayout();
 		//Build world matrices for objects		
 		void BuildMatrices();
+		//Inits the light in the scene
+		void InitLight();
+		//Loads all textures
+		void LoadTextures();
 
 		//Logger object used for logging info to text file
 		Logger *m_logger;
@@ -122,51 +120,45 @@ namespace ee
 		UINT m_msaaQuality;
 		//The viewport
 		D3D11_VIEWPORT m_viewport;
-
 		//World, view and projection matrices
 		XMFLOAT4X4 m_world;
 		XMFLOAT4X4 m_view;
 		XMFLOAT4X4 m_proj;
-
+		//Eye pos
+		XMFLOAT3 m_eyePosW;
 		//World matrices for objects
 		XMFLOAT4X4 m_boxWorld;
-		XMFLOAT4X4 m_hillsWorld;
-
 		//Vertex and index buffers
 		ID3D11Buffer *m_vertexBuffer;
 		ID3D11Buffer *m_indexBuffer;
-
-		//The effect
-		ID3DX11Effect *m_effect;
-		ID3DX11EffectTechnique *m_technique;
-		ID3DX11EffectMatrixVariable *m_effectWorldViewProj; //World view and projection matrices combined
-
+		//Lights
+		DirectionalLight m_dirLights[1];
+		SpotLight		 m_spotLight;
+		Material m_boxMat;
+		//Whether the spot light is on
+		bool m_isFlashlight;
 		//The input layout
 		ID3D11InputLayout *m_inputLayout;
-
-		//Speed of rotation
-		//const float m_rotSpeed = 0.1f;
-		//Angle of rotation
-		float m_zRot;
-
 		//Offsets for vertex and index buffers
 		int m_boxVertexOffset;
 		int m_hillsVertexOffset;
-
+		int m_skullVertexOffset;
 		UINT m_boxIndexCount;
 		UINT m_hillsIndexCount;
-
+		UINT m_skullIndexCount;
 		UINT m_boxIndexOffset;
 		UINT m_hillsIndexOffset;
-
+		UINT m_skullIndexOffset;
 		//Wireframe raster state
 		ID3D11RasterizerState *m_wireframeRS;
-
 		//Rotation angles
 		float m_theta, m_phi, m_radius;
-
 		//last mouse pos
 		POINT m_lastMousePos;
+		//Diffuse map for textures
+		ID3D11ShaderResourceView* m_diffuseMap;
+		//Tex transform
+		XMFLOAT4X4 m_texTransform;
 	};
 }
 

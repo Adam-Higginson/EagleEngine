@@ -172,4 +172,148 @@ namespace ee
 			}
 		}
 	}
+
+	void GeometryBuilder::CreateCylinder(float bottomRadius, float topRadius, 
+										 float height, UINT sliceCount, 
+										 UINT stackCount, MeshData &meshData)
+	{
+		meshData.vertices.clear();
+		meshData.indices.clear();
+
+		//Build stacks
+		float stackHeight = height / stackCount;
+
+		//Amount to increment radius as we move up each stack level
+		float radiusStep = (topRadius - bottomRadius) / stackCount;
+
+		UINT ringCount = stackCount + 1;
+
+		//Compute vertices starting at bottom and moving up
+		for (UINT i = 0; i < ringCount; i++)
+		{
+			float y = -0.5 * height + i * stackHeight;
+			float r = bottomRadius + i * radiusStep;
+
+			//vertices of ring
+			float dTheta = 2.0f * XM_PI / sliceCount;
+			for (UINT j = 0; j <= sliceCount; j++)
+			{
+				Vertex vertex;
+
+				float c = cosf(j * dTheta);
+				float s = sinf(j * dTheta);
+
+				vertex.position = XMFLOAT3(r * c, y, r * s);
+
+				vertex.texC.x = (float) j / sliceCount;
+				vertex.texC.y = 1.0f - (float) i / stackCount;
+
+				vertex.tangentU = XMFLOAT3(-s, 0.0f, c);
+
+				float dr = bottomRadius - topRadius;
+				XMFLOAT3 bitangent(dr * c, -height, dr * s);
+
+				XMVECTOR T = XMLoadFloat3(&vertex.tangentU);
+				XMVECTOR B = XMLoadFloat3(&bitangent);
+				XMVECTOR N = XMVector3Normalize(XMVector3Cross(T, B));
+				XMStoreFloat3(&vertex.normal, N);
+
+				meshData.vertices.push_back(vertex);
+			}
+		}
+
+		UINT ringVertexCount = sliceCount + 1;
+
+		//Compute indices for each stack
+		for (UINT i = 0; i < stackCount; i++)
+		{
+			for (UINT j = 0; j < sliceCount; j++)
+			{
+				//Triangle ABC given by (i*n + j, (i + 1) * n + j, (i + 1) * n + j + 1)
+				meshData.indices.push_back(i * ringVertexCount + j);
+				meshData.indices.push_back((i + 1) * ringVertexCount + j);
+				meshData.indices.push_back((i + 1) * ringVertexCount + j + 1);
+
+				//Triangle ACD given by: (i*n + j, (i + 1) * n + j + 1, i * n + j + 1)
+				meshData.indices.push_back(i * ringVertexCount + j);
+				meshData.indices.push_back((i + 1) * ringVertexCount + j + 1);
+				meshData.indices.push_back(i * ringVertexCount + j + 1);
+			}
+		}
+
+		CreateCylinderTop(bottomRadius, topRadius, height, sliceCount, stackCount, meshData);
+		CreateCylinderBottom(bottomRadius, topRadius, height, sliceCount, stackCount, meshData);
+	}
+
+	void GeometryBuilder::CreateCylinderTop(float bottomRadius, float topRadius, float height, 
+											UINT sliceCount, UINT stackCount, MeshData &meshData)
+	{
+		UINT baseIndex = (UINT)meshData.vertices.size();
+
+		float y = 0.5f * height;
+		float dTheta = 2.0f * XM_PI / sliceCount;
+
+		for (UINT i = 0; i <= sliceCount; i++)
+		{
+			float x = topRadius * cosf(i * dTheta);
+			float z = topRadius * sinf(i * dTheta);
+
+			//Scale down by height to make top cap texture coord proportional to base
+			float u = x / height + 0.5f;
+			float v = z / height + 0.5f;
+
+			meshData.vertices.push_back(Vertex(x, y, z, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, u, v));
+		}
+
+		//Cap center vertex
+		meshData.vertices.push_back(Vertex(0.0f, y, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.5f, 0.5f));
+
+		//Index of center vertex
+		UINT centerIndex = (UINT)meshData.vertices.size() - 1;
+
+		for (UINT i = 0; i < sliceCount; i++)
+		{
+			meshData.indices.push_back(centerIndex);
+			meshData.indices.push_back(baseIndex + i + 1);
+			meshData.indices.push_back(baseIndex + i);
+		}
+	}
+
+	void GeometryBuilder::CreateCylinderBottom(float bottomRadius, float topRadius, float height, UINT sliceCount, UINT stackCount, MeshData &meshData)
+	{
+			// 
+		// Build bottom cap.
+		//
+
+		UINT baseIndex = (UINT)meshData.vertices.size();
+		float y = -0.5f*height;
+
+		// vertices of ring
+		float dTheta = 2.0f*XM_PI/sliceCount;
+		for(UINT i = 0; i <= sliceCount; ++i)
+		{
+			float x = bottomRadius*cosf(i*dTheta);
+			float z = bottomRadius*sinf(i*dTheta);
+
+			// Scale down by the height to try and make top cap texture coord area
+			// proportional to base.
+			float u = x/height + 0.5f;
+			float v = z/height + 0.5f;
+
+			meshData.vertices.push_back( Vertex(x, y, z, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f, 0.0f, u, v) );
+		}
+
+		// Cap center vertex.
+		meshData.vertices.push_back( Vertex(0.0f, y, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.5f, 0.5f) );
+
+		// Cache the index of center vertex.
+		UINT centerIndex = (UINT)meshData.vertices.size()-1;
+
+		for(UINT i = 0; i < sliceCount; ++i)
+		{
+			meshData.indices.push_back(centerIndex);
+			meshData.indices.push_back(baseIndex + i);
+			meshData.indices.push_back(baseIndex + i+1);
+		}
+	}
 }

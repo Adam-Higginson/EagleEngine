@@ -48,6 +48,9 @@ namespace ee
 		void CreateCube(float length, MeshData &meshData);
 		void CreateBox(float width, float height, float depth, MeshData &meshData);
 		void CreatePlane(float width, float depth, UINT m, UINT n, MeshData &meshData);
+		void CreateCylinder(float bottomRadius, float topRadius, float height, UINT sliceCount, UINT stackCount, MeshData &meshData);
+		void CreateCylinderTop(float bottomRadius, float topRadius, float height, UINT sliceCount, UINT stackCount, MeshData &meshData);
+		void CreateCylinderBottom(float bottomRadius, float topRadius, float height, UINT sliceCount, UINT stackCount, MeshData &meshData);
 	};
 }
 

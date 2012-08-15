@@ -3,7 +3,7 @@
 namespace ee
 {
 	Graphics::Graphics(HWND hWnd, Config *config, Logger *logger)
-		: m_theta(1.5f * MathsUtil::PI), m_phi(0.1f * MathsUtil::PI), m_radius(15.0f)
+		: m_theta(1.5f * MathsUtil::PI), m_phi(0.1f * MathsUtil::PI), m_radius(10.0f), m_eyePosW(0.0f, 0.0f, 0.0f), m_isFlashlight(true)
 	{
 		m_hWnd = hWnd;
 		m_fullScreen = config->GetFullScreen();
@@ -27,6 +27,7 @@ namespace ee
 
 	BOOL Graphics::Init()
 	{
+
 		UINT createDeviceFlags = 0;
 
 		#if defined(DEBUG) || defined(_DEBUG)
@@ -275,11 +276,14 @@ namespace ee
 
 		HR(m_device->CreateRasterizerState(&wireframeDesc, &m_wireframeRS));
 
+		LoadTextures();
+		InitLight();
+		Effects::Init(m_device);
+		InputLayouts::Init(m_device);
 		CreateBuffers();
-		if (!BuildShaders())
-			return FALSE;
-		BuildVertexLayout();
 		BuildMatrices();
+		
+
 
 		return TRUE;
 
@@ -291,6 +295,8 @@ namespace ee
 		float y = m_radius * cosf(m_phi);
 		float z = m_radius * sinf(m_phi) * sinf(m_theta);
 
+		m_eyePosW = XMFLOAT3(x, y, z);
+
 		//Build view matrix
 		XMVECTOR position = XMVectorSet(x, y, z, 1.0f);
 		XMVECTOR target = XMVectorZero();
@@ -298,6 +304,9 @@ namespace ee
 
 		XMMATRIX view = XMMatrixLookAtLH(position, target, up);
 		XMStoreFloat4x4(&m_view, view);
+
+		m_spotLight.position = m_eyePosW;
+		XMStoreFloat3(&m_spotLight.direction, XMVector3Normalize(target - position));
 	}
 
 	void Graphics::DrawScene(float r, float g, float b)
@@ -305,7 +314,7 @@ namespace ee
 		m_deviceContext->ClearRenderTargetView(m_backBuffer, D3DXCOLOR(r, g, b, 1.0f));
 		m_deviceContext->ClearDepthStencilView(m_depthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 
-		m_deviceContext->IASetInputLayout(m_inputLayout);
+		m_deviceContext->IASetInputLayout(InputLayouts::posNormalTexLayout);
 		m_deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 		if (m_isWireframe)
@@ -313,30 +322,45 @@ namespace ee
 		else
 			m_deviceContext->RSSetState(NULL);
 
-		UINT stride = sizeof(Vertex);
+		UINT stride = sizeof(Vertex::PosNormalTex);
 		UINT offset = 0;
-		m_deviceContext->IASetVertexBuffers(0, 1, &m_vertexBuffer, &stride, &offset);
-		m_deviceContext->IASetIndexBuffer(m_indexBuffer, DXGI_FORMAT_R32_UINT, 0);
 
-		//Constants
 		XMMATRIX view = XMLoadFloat4x4(&m_view);
 		XMMATRIX proj = XMLoadFloat4x4(&m_proj);
 		XMMATRIX viewProj = view * proj;
 
+		//per frame constants
+		Effects::basicFX->SetDirLights(m_dirLights);
+		Effects::basicFX->setSpotLight(m_spotLight);
+		Effects::basicFX->SetEyePosW(m_eyePosW);
+
+		ID3DX11EffectTechnique *activeTech;
+		
+		if (m_isFlashlight)
+			activeTech = Effects::basicFX->light1SpotTexTech;
+		else
+			activeTech = Effects::basicFX->light1TexTech;
+
 		D3DX11_TECHNIQUE_DESC techDesc;
-		m_technique->GetDesc(&techDesc);
+		activeTech->GetDesc(&techDesc);
+
 		for (UINT pass = 0; pass < techDesc.Passes; ++pass)
 		{
-			//Draw hills
-			XMMATRIX world = XMLoadFloat4x4(&m_hillsWorld);
-			m_effectWorldViewProj->SetMatrix(reinterpret_cast<float *>(&(world * viewProj)));
-			m_technique->GetPassByIndex(pass)->Apply(0, m_deviceContext);
-			m_deviceContext->DrawIndexed(m_hillsIndexCount, m_hillsIndexOffset, m_hillsVertexOffset);
-
+			m_deviceContext->IASetVertexBuffers(0, 1, &m_vertexBuffer, &stride, &offset);
+			m_deviceContext->IASetIndexBuffer(m_indexBuffer, DXGI_FORMAT_R32_UINT, 0);
 			//Draw box
-			world = XMLoadFloat4x4(&m_boxWorld);
-			m_effectWorldViewProj->SetMatrix(reinterpret_cast<float *>(&(world * viewProj)));
-			m_technique->GetPassByIndex(pass)->Apply(0, m_deviceContext);
+			XMMATRIX world = XMLoadFloat4x4(&m_boxWorld);
+			XMMATRIX worldInvTranspose = MathsUtil::InverseTranspose(world);
+			XMMATRIX worldViewProj = world * view * proj;
+
+			Effects::basicFX->SetWorld(world);
+			Effects::basicFX->SetWorldInvTranspose(worldInvTranspose);
+			Effects::basicFX->SetWorldViewProj(worldViewProj);
+			Effects::basicFX->SetTexTransform(XMLoadFloat4x4(&m_texTransform));
+			Effects::basicFX->SetMaterial(m_boxMat);
+			Effects::basicFX->SetDiffuseMap(m_diffuseMap);
+
+			activeTech->GetPassByIndex(pass)->Apply(0, m_deviceContext);
 			m_deviceContext->DrawIndexed(m_boxIndexCount, m_boxIndexOffset, m_boxVertexOffset);
 		}
 
@@ -421,6 +445,11 @@ namespace ee
 		return static_cast<float>(m_screenWidth) / m_screenHeight;
 	}
 
+	void Graphics::ToggleFlashlight()
+	{
+		m_isFlashlight = !m_isFlashlight;
+	}
+
 	void Graphics::Release()
 	{
 
@@ -475,23 +504,20 @@ namespace ee
 			m_depthStencilView = NULL;
 		}
 
-		if (m_effect)
-		{
-			m_effect->Release();
-			m_effect = NULL;
-		}
-
-		if (m_inputLayout)
-		{
-			m_inputLayout->Release();
-			m_inputLayout = NULL;
-		}
-
 		if (m_wireframeRS)
 		{
 			m_wireframeRS->Release();
 			m_wireframeRS = NULL;
 		}
+
+		if (m_diffuseMap)
+		{
+			m_diffuseMap->Release();
+			m_diffuseMap = NULL;
+		}
+
+		Effects::Release();
+		InputLayouts::Release();
 	}
 
 	bool Graphics::IsDevice() const
@@ -532,6 +558,19 @@ namespace ee
 			m_phi = MathsUtil::Clamp(m_phi, 0.1f, MathsUtil::PI - 0.1f);
 		}
 
+		else if((button & MK_RBUTTON) != 0 )
+		{
+		// Make each pixel correspond to 0.01 unit in the scene.
+		float dx = 0.01f*static_cast<float>(x - m_lastMousePos.x);
+		float dy = 0.01f*static_cast<float>(y - m_lastMousePos.y);
+
+		// Update the camera radius based on input.
+		m_radius += dx - dy;
+
+		// Restrict the radius.
+		m_radius = MathsUtil::Clamp(m_radius, 1.0f, 15.0f);
+		}
+
 		m_lastMousePos.x = x;
 		m_lastMousePos.y = y;
 	}
@@ -544,68 +583,34 @@ namespace ee
 		//Create the cube in main memory
 		GeometryBuilder builder;
 		GeometryBuilder::MeshData cubeData;
-		GeometryBuilder::MeshData hillData;
-		builder.CreateBox(1.0f, 1.0f, 1.0f, cubeData);
-		builder.CreatePlane(160.0f, 160.0f, 50, 50, hillData);
+		builder.CreateBox(10.0f, 10.0f, 1.0f, cubeData);
 
 		//Cache vertex offset for each object
 		m_boxVertexOffset = 0;
-		m_hillsVertexOffset = cubeData.vertices.size();
 
 		//Cache index count of each object
 		m_boxIndexCount = cubeData.indices.size();
-		m_hillsIndexCount = hillData.indices.size();
 
 		//Cache the starting index for each object in index buffer
 		m_boxIndexOffset = 0;
-		m_hillsIndexOffset = m_boxIndexCount;
 
-		UINT totalVertices = cubeData.vertices.size() + hillData.vertices.size();
-		UINT totalIndices = m_boxIndexCount + m_hillsIndexCount;
+		UINT totalVertices = cubeData.vertices.size();
+		UINT totalIndices = m_boxIndexCount;
 
 		//A vector of all the vertices into one vertex buffer
-		std::vector<Vertex> vertices(totalVertices);
+		std::vector<Vertex::PosNormalTex> vertices(totalVertices);
 
 		UINT k = 0;
 		for (size_t i = 0; i < cubeData.vertices.size(); i++, k++)
 		{
-			XMFLOAT3 pos = cubeData.vertices[i].position;
-			vertices[k].pos = pos;
-
-			vertices[k].colour = (const float *)&Colour::BLUE;
-		}
-
-		for (size_t i = 0; i < hillData.vertices.size(); i++, k++)
-		{
-			XMFLOAT3 pos = hillData.vertices[i].position;
-			pos.y = 0.3f * (pos.z * sinf(0.1f * pos.x) + pos.x * cosf(0.1f * pos.z));
-			vertices[k].pos = pos;
-			
-			if (pos.y < -10.0f)
-			{
-				vertices[k].colour = (const float *)&Colour::SANDY;
-			}
-			else if (pos.y < 5.0f)
-			{
-				vertices[k].colour = (const float *)&Colour::LIGHT_YELLOW;
-			}
-			else if (pos.y < 12.0f)
-			{
-				vertices[k].colour = (const float *)&Colour::DARK_YELLOW;
-			}
-			else if (pos.y < 20.0f)
-			{
-				vertices[k].colour = (const float *)&Colour::BROWN;
-			}
-			else
-			{
-				vertices[k].colour = (const float *)&Colour::WHITE;
-			}
+			vertices[k].pos		= cubeData.vertices[i].position;
+			vertices[k].normal	= cubeData.vertices[i].normal;
+			vertices[k].tex		= cubeData.vertices[i].texC;
 		}
 
 		D3D11_BUFFER_DESC vertexBufferDesc;
 		vertexBufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
-		vertexBufferDesc.ByteWidth = sizeof(Vertex) * totalVertices;
+		vertexBufferDesc.ByteWidth = sizeof(Vertex::PosNormalTex) * totalVertices;
 		vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 		vertexBufferDesc.CPUAccessFlags = 0;
 		vertexBufferDesc.MiscFlags = 0;
@@ -617,7 +622,6 @@ namespace ee
 		//Pack the indices of all meshes into one index buffer
 		std::vector<UINT> indices;
 		indices.insert(indices.end(), cubeData.indices.begin(), cubeData.indices.end());
-		indices.insert(indices.end(), hillData.indices.begin(), hillData.indices.end());
 
 		D3D11_BUFFER_DESC indexBufferDesc;
 		indexBufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
@@ -631,77 +635,43 @@ namespace ee
 		HR(m_device->CreateBuffer(&indexBufferDesc, &iSubData, &m_indexBuffer));
 	}
 
-	bool Graphics::BuildShaders()
-	{
-		DWORD shaderFlags = 0;
-
-	#if defined(DEBUG) || defined(_DEBUG)
-		shaderFlags |= D3D10_SHADER_DEBUG;
-		shaderFlags |= D3D10_SHADER_SKIP_OPTIMIZATION;
-	#endif
-
-		ID3D10Blob *compiledShader = NULL;
-		ID3D10Blob *errorMessages = NULL;
-
-		HRESULT hr = D3DX11CompileFromFile(L"BasicShader.fx", NULL, NULL, NULL, "fx_5_0", shaderFlags, 0, 0, &compiledShader, &errorMessages, NULL);
-
-		if (errorMessages != 0)
-		{
-			MessageBoxA(NULL, (char *)errorMessages->GetBufferPointer(), NULL, 0);
-			errorMessages->Release();
-			errorMessages = NULL;
-		}
-
-		if (FAILED(hr))
-		{
-			DXTrace(__FILE__, (DWORD)__LINE__, hr, L"D3DX11CompileFromFile", true);
-			return false;
-		}
-
-		
-		HR(D3DX11CreateEffectFromMemory(compiledShader->GetBufferPointer(), 
-									    compiledShader->GetBufferSize(), 
-										0, m_device, &m_effect));
-
-		//Release compiled shader
-		if (compiledShader)
-		{
-			compiledShader->Release();
-			compiledShader = NULL;
-		}
-
-		m_technique = m_effect->GetTechniqueByName("ColorTech");
-		m_effectWorldViewProj = m_effect->GetVariableByName("gWorldViewProj")->AsMatrix();
-
-		return true;
-
-	}
-
-	void Graphics::BuildVertexLayout()
-	{
-		//Describe the vertex
-		D3D11_INPUT_ELEMENT_DESC vertexDesc[] =
-		{
-			{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
-			{"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0}
-		};
-
-		//Create input layout
-		D3DX11_PASS_DESC passDesc;
-		m_technique->GetPassByIndex(0)->GetDesc(&passDesc);
-		HR(m_device->CreateInputLayout(vertexDesc, 2, passDesc.pIAInputSignature, passDesc.IAInputSignatureSize, &m_inputLayout));
-	}
-
 	void Graphics::BuildMatrices()
 	{
 		//Load world, view and projection matrices
 		XMMATRIX identityMatrix = XMMatrixIdentity();
-		XMStoreFloat4x4(&m_hillsWorld, identityMatrix);
 		XMStoreFloat4x4(&m_view, identityMatrix);
 		XMStoreFloat4x4(&m_proj, identityMatrix);
+		XMStoreFloat4x4(&m_texTransform, identityMatrix);
 
-		XMMATRIX boxScale = XMMatrixScaling(2.0f, 2.0f, 2.0f);
-		XMMATRIX boxOffset = XMMatrixTranslation(0.0f, 0.5f, 0.0f);
-		XMStoreFloat4x4(&m_boxWorld, XMMatrixMultiply(boxScale, boxOffset));
+		//XMMATRIX boxScale = XMMatrixScaling(2.0f, 2.0f, 2.0f);
+		//XMMATRIX boxOffset = XMMatrixTranslation(0.0f, 0.5f, 0.0f);
+		XMStoreFloat4x4(&m_boxWorld, identityMatrix);
+	}
+
+	void Graphics::InitLight()
+	{
+		m_dirLights[0].ambient = XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f);
+		m_dirLights[0].diffuse = XMFLOAT4(0.8f, 0.8f, 0.8f, 1.0f);
+		m_dirLights[0].specular = XMFLOAT4(0.6f, 0.6f, 0.6f, 16.0f);
+		m_dirLights[0].direction = XMFLOAT3(0.707f, -0.707f, 0.0f);
+
+		m_spotLight.ambient = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
+		m_spotLight.diffuse  = XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f);
+		m_spotLight.specular = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+		m_spotLight.att      = XMFLOAT3(1.0f, 0.0f, 0.0f);
+		m_spotLight.spot     = 96.0f;
+		m_spotLight.range    = 1000.0f;
+
+		m_boxMat.ambient = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
+		m_boxMat.diffuse = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+		m_boxMat.specular = XMFLOAT4(0.6f, 0.6f, 0.6f, 16.0f);
+		m_boxMat.reflect = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
+
+	}
+
+	void Graphics::LoadTextures()
+	{
+		//Just load single brick texture
+		HR(D3DX11CreateShaderResourceViewFromFile(m_device, L"Textures/darkbrickdxt1.dds", NULL, NULL, &m_diffuseMap, NULL));
 	}
 }

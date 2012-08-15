@@ -136,6 +136,7 @@ namespace ee
 		m_timer.Reset();
 
 		bool spaceDown = false;
+		bool fDown = false;
 		while (msg.message != WM_QUIT)
 		{
 
@@ -167,6 +168,18 @@ namespace ee
 						spaceDown = false;
 					}
 
+					if (m_inputHandler->IsKeyDown('F'))
+					{
+						fDown = true;
+					}
+					if (m_inputHandler->IsKeyUp('F'))
+					{
+						if (fDown)
+							m_graphics->ToggleFlashlight();
+
+						fDown = false;
+					}
+
 					//Pause key, toggle paused
 					if (m_inputHandler->IsKeyDown(VK_ESCAPE))
 					{
@@ -174,7 +187,7 @@ namespace ee
 					}
 
 					m_graphics->UpdateScene(m_timer.GetDeltaTime());
-					m_graphics->DrawScene(0.0f, 0.0f, 0.0f);
+					m_graphics->DrawScene(0.69f, 0.77f, 0.87f);
 
 				}
 				else
@@ -203,13 +216,11 @@ namespace ee
 			case WM_ACTIVATE:
 				if (LOWORD(wParam) == WA_INACTIVE)
 				{
-					OutputDebugString(L"Currently inactive!");
 					m_isPaused = TRUE;
 					m_timer.Stop();
 				}
 				else
 				{
-					OutputDebugString(L"Currently active!");
 					m_isPaused = FALSE;
 					m_timer.Start();
 				}
@@ -231,14 +242,12 @@ namespace ee
 				return 0;
 
 			case WM_SIZE:
-				OutputDebugString(L"Entered WM_SIZE\n");
 				m_screenWidth = LOWORD(lParam);
 				m_screenHeight = HIWORD(lParam);
 				if (m_graphics->IsDevice())
 				{
 					if (wParam == SIZE_MAXIMIZED)
 					{
-						OutputDebugString(L"Size maximised!");
 						m_isPaused = false;
 						m_fullScreen = TRUE;
 						m_minimised = FALSE;
@@ -254,7 +263,6 @@ namespace ee
 					{
 						if (m_minimised)
 						{
-							OutputDebugString(L"In size restored, restoring from minimised\n");
 							m_isPaused = false;
 							m_minimised = false;
 							Resize();
@@ -262,7 +270,6 @@ namespace ee
 
 						else if (m_fullScreen)
 						{
-							OutputDebugString(L"In size restored, restoring from fullscreen\n");
 							m_isPaused = false;
 							m_fullScreen = false;
 							Resize();
@@ -270,14 +277,12 @@ namespace ee
 					
 						else if (m_isResizing)
 						{
-							OutputDebugString(L"In size restored, currently resizing\n");
 							//don't do anything
 						}
 
 						else
 						{
 							//MessageBox(0, L"Full screen", 0, 0);
-							OutputDebugString(L"API call, i.e else\n");
 							Resize();
 						}
 					}
