@@ -97,6 +97,7 @@
     <ClInclude Include="Config.h" />
     <ClInclude Include="EagleEngineUtil.h" />
     <ClInclude Include="EffectsUtil.h" />
+    <ClInclude Include="Entity.h" />
     <ClInclude Include="GeometryBuilder.h" />
     <ClInclude Include="Graphics.h" />
     <ClInclude Include="InputHandler.h" />

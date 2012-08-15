@@ -5,6 +5,8 @@ cbuffer cbPerFrame
 {
 	DirectionalLight gDirLights[1];
 	SpotLight		 gSpotLight;
+	SpotLight		 gStaticSpotLight;
+	PointLight		 gPointLight;
 	float3 gEyePosW;
 
 	float gFogStart;
@@ -101,10 +103,10 @@ float4 PS(VertexOut pin, uniform int gLightCount, uniform bool gUseTexture, unif
 		for (int i = 0; i < 1; ++i)
 		{
 			float4 A, D, S;
-			ComputeDirectionalLight(gMaterial, gDirLights[i], pin.normalW, toEye, A, D, S);
+			/*ComputeDirectionalLight(gMaterial, gDirLights[i], pin.normalW, toEye, A, D, S);
 			ambient += A;
 			diffuse += D;
-			spec    += S;
+			spec    += S;*/
 
 			if (isSpotlight)
 			{
@@ -113,6 +115,12 @@ float4 PS(VertexOut pin, uniform int gLightCount, uniform bool gUseTexture, unif
 				diffuse += D;
 				spec	+= S;
 			}
+
+			ComputeSpotLight(gMaterial, gStaticSpotLight, pin.posW, pin.normalW, toEye, A, D, S);
+			//ComputePointLight(gMaterial, gPointLight, pin.posW, pin.normalW, toEye, A, D, S);
+			ambient += A;
+			diffuse += D;
+			spec	+= S;
 
 
 		}

@@ -121,19 +121,26 @@ namespace ee
 		//The viewport
 		D3D11_VIEWPORT m_viewport;
 		//World, view and projection matrices
-		XMFLOAT4X4 m_world;
 		XMFLOAT4X4 m_view;
 		XMFLOAT4X4 m_proj;
 		//Eye pos
 		XMFLOAT3 m_eyePosW;
 		//World matrices for objects
 		XMFLOAT4X4 m_boxWorld;
+		XMFLOAT4X4 m_wallLeftWorld;
+		XMFLOAT4X4 m_wallRightWorld;
+		XMFLOAT4X4 m_wallBackWorld;
+		XMFLOAT4X4 m_wallFloorWorld;
+		XMFLOAT4X4 m_wallRoofWorld;
+		XMFLOAT4X4 m_crateWorld;
 		//Vertex and index buffers
 		ID3D11Buffer *m_vertexBuffer;
 		ID3D11Buffer *m_indexBuffer;
 		//Lights
 		DirectionalLight m_dirLights[1];
+		SpotLight		 m_staticSpotLight;
 		SpotLight		 m_spotLight;
+		PointLight		 m_pointLight;
 		Material m_boxMat;
 		//Whether the spot light is on
 		bool m_isFlashlight;
@@ -141,14 +148,28 @@ namespace ee
 		ID3D11InputLayout *m_inputLayout;
 		//Offsets for vertex and index buffers
 		int m_boxVertexOffset;
-		int m_hillsVertexOffset;
-		int m_skullVertexOffset;
+		int m_wallLeftVertexOffset;
+		int m_wallRightVertexOffset;
+		int m_wallBackVertexOffset;
+		int m_wallFloorVertexOffset;
+		int m_wallRoofVertexOffset;
+		int m_crateVertexOffset;
+
 		UINT m_boxIndexCount;
-		UINT m_hillsIndexCount;
-		UINT m_skullIndexCount;
+		UINT m_wallLeftIndexCount;
+		UINT m_wallRightIndexCount;
+		UINT m_wallBackIndexCount;
+		UINT m_wallFloorIndexCount;
+		UINT m_wallRoofIndexCount;
+		UINT m_crateIndexCount;
+
 		UINT m_boxIndexOffset;
-		UINT m_hillsIndexOffset;
-		UINT m_skullIndexOffset;
+		UINT m_wallLeftIndexOffset;
+		UINT m_wallRightIndexOffset;
+		UINT m_wallBackIndexOffset;
+		UINT m_wallFloorIndexOffset;
+		UINT m_wallRoofIndexOffset;
+		UINT m_crateIndexOffset;
 		//Wireframe raster state
 		ID3D11RasterizerState *m_wireframeRS;
 		//Rotation angles
@@ -157,8 +178,10 @@ namespace ee
 		POINT m_lastMousePos;
 		//Diffuse map for textures
 		ID3D11ShaderResourceView* m_diffuseMap;
+		ID3D11ShaderResourceView *m_crateDiffuseMap;
 		//Tex transform
 		XMFLOAT4X4 m_texTransform;
+		XMFLOAT4X4 m_crateTexTransform;
 	};
 }
 

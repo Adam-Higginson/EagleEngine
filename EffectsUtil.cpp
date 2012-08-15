@@ -54,6 +54,8 @@ namespace ee
 		eyePosW				= m_effect->GetVariableByName("gEyePosW")->AsVector();
 		dirLights			= m_effect->GetVariableByName("gDirLights");
 		spotLight			= m_effect->GetVariableByName("gSpotLight");
+		staticSpotLight		= m_effect->GetVariableByName("gStaticSpotLight");
+		pointLight			= m_effect->GetVariableByName("gPointLight");
 		mat					= m_effect->GetVariableByName("gMaterial");
 		diffuseMap			= m_effect->GetVariableByName("gDiffuseMap")->AsShaderResource();
 	}

@@ -187,7 +187,7 @@ namespace ee
 					}
 
 					m_graphics->UpdateScene(m_timer.GetDeltaTime());
-					m_graphics->DrawScene(0.69f, 0.77f, 0.87f);
+					m_graphics->DrawScene(0.f, 0.f, 0.f);
 
 				}
 				else

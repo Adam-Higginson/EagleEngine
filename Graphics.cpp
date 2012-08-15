@@ -3,7 +3,7 @@
 namespace ee
 {
 	Graphics::Graphics(HWND hWnd, Config *config, Logger *logger)
-		: m_theta(1.5f * MathsUtil::PI), m_phi(0.1f * MathsUtil::PI), m_radius(10.0f), m_eyePosW(0.0f, 0.0f, 0.0f), m_isFlashlight(true)
+		: m_theta(1.5f * MathsUtil::PI), m_phi(0.1f * MathsUtil::PI), m_radius(3.0f), m_eyePosW(0.0f, 0.0f, 0.0f), m_isFlashlight(true)
 	{
 		m_hWnd = hWnd;
 		m_fullScreen = config->GetFullScreen();
@@ -331,7 +331,9 @@ namespace ee
 
 		//per frame constants
 		Effects::basicFX->SetDirLights(m_dirLights);
-		Effects::basicFX->setSpotLight(m_spotLight);
+		Effects::basicFX->SetSpotLight(m_spotLight);
+		Effects::basicFX->SetStaticSpotLight(m_staticSpotLight);
+		Effects::basicFX->SetPointLight(m_pointLight);
 		Effects::basicFX->SetEyePosW(m_eyePosW);
 
 		ID3DX11EffectTechnique *activeTech;
@@ -348,6 +350,7 @@ namespace ee
 		{
 			m_deviceContext->IASetVertexBuffers(0, 1, &m_vertexBuffer, &stride, &offset);
 			m_deviceContext->IASetIndexBuffer(m_indexBuffer, DXGI_FORMAT_R32_UINT, 0);
+
 			//Draw box
 			XMMATRIX world = XMLoadFloat4x4(&m_boxWorld);
 			XMMATRIX worldInvTranspose = MathsUtil::InverseTranspose(world);
@@ -359,9 +362,81 @@ namespace ee
 			Effects::basicFX->SetTexTransform(XMLoadFloat4x4(&m_texTransform));
 			Effects::basicFX->SetMaterial(m_boxMat);
 			Effects::basicFX->SetDiffuseMap(m_diffuseMap);
-
 			activeTech->GetPassByIndex(pass)->Apply(0, m_deviceContext);
 			m_deviceContext->DrawIndexed(m_boxIndexCount, m_boxIndexOffset, m_boxVertexOffset);
+
+			//Draw left wall
+			world = XMLoadFloat4x4(&m_wallLeftWorld);
+			worldViewProj = world * view * proj;
+			Effects::basicFX->SetWorld(world);
+			Effects::basicFX->SetWorldInvTranspose(worldInvTranspose);
+			Effects::basicFX->SetWorldViewProj(worldViewProj);
+			Effects::basicFX->SetTexTransform(XMLoadFloat4x4(&m_texTransform));
+			Effects::basicFX->SetMaterial(m_boxMat);
+			Effects::basicFX->SetDiffuseMap(m_diffuseMap);
+			activeTech->GetPassByIndex(pass)->Apply(0, m_deviceContext);
+			m_deviceContext->DrawIndexed(m_wallLeftIndexCount, m_wallLeftIndexOffset, m_wallLeftVertexOffset);
+
+			//Draw right wall
+			world = XMLoadFloat4x4(&m_wallRightWorld);
+			worldViewProj = world * view * proj;
+			Effects::basicFX->SetWorld(world);
+			Effects::basicFX->SetWorldInvTranspose(worldInvTranspose);
+			Effects::basicFX->SetWorldViewProj(worldViewProj);
+			Effects::basicFX->SetTexTransform(XMLoadFloat4x4(&m_texTransform));
+			Effects::basicFX->SetMaterial(m_boxMat);
+			Effects::basicFX->SetDiffuseMap(m_diffuseMap);
+			activeTech->GetPassByIndex(pass)->Apply(0, m_deviceContext);
+			m_deviceContext->DrawIndexed(m_wallRightIndexCount, m_wallRightIndexOffset, m_wallRightVertexOffset);
+
+			//Draw back wall
+			world = XMLoadFloat4x4(&m_wallBackWorld);
+			worldViewProj = world * view * proj;
+			Effects::basicFX->SetWorld(world);
+			Effects::basicFX->SetWorldInvTranspose(worldInvTranspose);
+			Effects::basicFX->SetWorldViewProj(worldViewProj);
+			Effects::basicFX->SetTexTransform(XMLoadFloat4x4(&m_texTransform));
+			Effects::basicFX->SetMaterial(m_boxMat);
+			Effects::basicFX->SetDiffuseMap(m_diffuseMap);
+			activeTech->GetPassByIndex(pass)->Apply(0, m_deviceContext);
+			m_deviceContext->DrawIndexed(m_wallBackIndexCount, m_wallBackIndexOffset, m_wallBackVertexOffset);
+
+			//Draw floor wall
+			world = XMLoadFloat4x4(&m_wallFloorWorld);
+			worldViewProj = world * view * proj;
+			Effects::basicFX->SetWorld(world);
+			Effects::basicFX->SetWorldInvTranspose(worldInvTranspose);
+			Effects::basicFX->SetWorldViewProj(worldViewProj);
+			Effects::basicFX->SetTexTransform(XMLoadFloat4x4(&m_texTransform));
+			Effects::basicFX->SetMaterial(m_boxMat);
+			Effects::basicFX->SetDiffuseMap(m_diffuseMap);
+			activeTech->GetPassByIndex(pass)->Apply(0, m_deviceContext);
+			m_deviceContext->DrawIndexed(m_wallFloorIndexCount, m_wallFloorIndexOffset, m_wallFloorVertexOffset);
+
+			//Draw Roof wall
+			world = XMLoadFloat4x4(&m_wallRoofWorld);
+			worldViewProj = world * view * proj;
+			Effects::basicFX->SetWorld(world);
+			Effects::basicFX->SetWorldInvTranspose(worldInvTranspose);
+			Effects::basicFX->SetWorldViewProj(worldViewProj);
+			Effects::basicFX->SetTexTransform(XMLoadFloat4x4(&m_texTransform));
+			Effects::basicFX->SetMaterial(m_boxMat);
+			Effects::basicFX->SetDiffuseMap(m_diffuseMap);
+			activeTech->GetPassByIndex(pass)->Apply(0, m_deviceContext);
+			m_deviceContext->DrawIndexed(m_wallRoofIndexCount, m_wallRoofIndexOffset, m_wallRoofVertexOffset);
+
+			//Draw Crate
+			world = XMLoadFloat4x4(&m_crateWorld);
+			worldViewProj = world * view * proj;
+			Effects::basicFX->SetWorld(world);
+			Effects::basicFX->SetWorldInvTranspose(worldInvTranspose);
+			Effects::basicFX->SetWorldViewProj(worldViewProj);
+			Effects::basicFX->SetTexTransform(XMLoadFloat4x4(&m_crateTexTransform));
+			Effects::basicFX->SetMaterial(m_boxMat);
+			Effects::basicFX->SetDiffuseMap(m_crateDiffuseMap);
+			activeTech->GetPassByIndex(pass)->Apply(0, m_deviceContext);
+			m_deviceContext->DrawIndexed(m_crateIndexCount, m_crateIndexOffset, m_crateVertexOffset);
+
 		}
 
 		HR(m_swapChain->Present(0, 0));
@@ -369,7 +444,6 @@ namespace ee
 
 	void Graphics::Resize(int newWidth, int newHeight)
 	{
-		OutputDebugString(L"In Graphics::Resize\n");
 		m_screenWidth = newWidth;
 		m_screenHeight = newHeight;
 
@@ -436,8 +510,6 @@ namespace ee
 		XMMATRIX P = XMMatrixPerspectiveFovLH(0.25f * MathsUtil::PI, GetAspectRatio(), 1.0f, 1000.0f);
 		XMStoreFloat4x4(&m_proj, P);
 		
-		OutputDebugString(L"Finished Graphics::Resize\n");
-
 	}
 
 	float Graphics::GetAspectRatio() const
@@ -516,6 +588,12 @@ namespace ee
 			m_diffuseMap = NULL;
 		}
 
+		if (m_crateDiffuseMap)
+		{
+			m_crateDiffuseMap->Release();
+			m_crateDiffuseMap = NULL;
+		}
+
 		Effects::Release();
 		InputLayouts::Release();
 	}
@@ -560,15 +638,15 @@ namespace ee
 
 		else if((button & MK_RBUTTON) != 0 )
 		{
-		// Make each pixel correspond to 0.01 unit in the scene.
-		float dx = 0.01f*static_cast<float>(x - m_lastMousePos.x);
-		float dy = 0.01f*static_cast<float>(y - m_lastMousePos.y);
+			// Make each pixel correspond to 0.01 unit in the scene.
+			float dx = 0.01f*static_cast<float>(x - m_lastMousePos.x);
+			float dy = 0.01f*static_cast<float>(y - m_lastMousePos.y);
 
-		// Update the camera radius based on input.
-		m_radius += dx - dy;
+			// Update the camera radius based on input.
+			m_radius += dx - dy;
 
-		// Restrict the radius.
-		m_radius = MathsUtil::Clamp(m_radius, 1.0f, 15.0f);
+			// Restrict the radius.
+			m_radius = MathsUtil::Clamp(m_radius, 1.5f, 20.0f);
 		}
 
 		m_lastMousePos.x = x;
@@ -582,20 +660,58 @@ namespace ee
 	{
 		//Create the cube in main memory
 		GeometryBuilder builder;
-		GeometryBuilder::MeshData cubeData;
-		builder.CreateBox(10.0f, 10.0f, 1.0f, cubeData);
+		GeometryBuilder::MeshData cubeData, wallLeft, wallRight, wallBack, wallFloor, wallRoof, crate;
+		builder.CreateBox(20.0f, 10.0f, 1.0f, cubeData);
+		builder.CreateBox(1.0f, 10.0f, 15.0f, wallLeft);
+		builder.CreateBox(1.0f, 10.0f, 15.0f, wallRight);
+		builder.CreateBox(20.0f, 10.0f, 1.0f, wallBack);
+		builder.CreateBox(20.0f, 1.0f, 15.0f, wallFloor);
+		builder.CreateBox(20.0f, 1.0f, 15.0f, wallRoof);
+		builder.CreateBox(1.0f, 1.0f, 1.0f, crate);
 
 		//Cache vertex offset for each object
 		m_boxVertexOffset = 0;
+		m_wallLeftVertexOffset = cubeData.vertices.size();
+		m_wallRightVertexOffset = m_wallLeftVertexOffset + wallLeft.vertices.size();
+		m_wallBackVertexOffset = m_wallRightVertexOffset + wallRight.vertices.size();
+		m_wallFloorVertexOffset = m_wallBackVertexOffset + wallBack.vertices.size();
+		m_wallRoofVertexOffset = m_wallFloorVertexOffset + wallFloor.vertices.size();
+		m_crateVertexOffset = m_wallRoofVertexOffset + wallRoof.vertices.size();
 
 		//Cache index count of each object
 		m_boxIndexCount = cubeData.indices.size();
+		m_wallLeftIndexCount = wallLeft.indices.size();
+		m_wallRightIndexCount = wallRight.indices.size();
+		m_wallBackIndexCount = wallBack.indices.size();
+		m_wallFloorIndexCount = wallFloor.indices.size();
+		m_wallRoofIndexCount = wallRoof.indices.size();
+		m_crateIndexCount = crate.indices.size();
 
 		//Cache the starting index for each object in index buffer
 		m_boxIndexOffset = 0;
+		m_wallLeftIndexOffset = m_boxIndexCount;
+		m_wallRightIndexOffset = m_wallLeftIndexOffset + m_wallLeftIndexCount;
+		m_wallBackIndexOffset = m_wallRightIndexOffset + m_wallRightIndexCount;
+		m_wallFloorIndexOffset = m_wallBackIndexOffset + m_wallBackIndexCount;
+		m_wallRoofIndexOffset = m_wallFloorIndexOffset + m_wallFloorIndexCount;
+		m_crateIndexOffset = m_wallRoofIndexOffset + m_wallRoofIndexCount;
 
-		UINT totalVertices = cubeData.vertices.size();
-		UINT totalIndices = m_boxIndexCount;
+
+		UINT totalVertices = cubeData.vertices.size() 
+							+ wallLeft.vertices.size() 
+							+ wallRight.vertices.size() 
+							+ wallBack.vertices.size() 
+							+ wallFloor.vertices.size()
+							+ wallRoof.vertices.size()
+							+ crate.vertices.size();
+
+		UINT totalIndices = m_boxIndexCount 
+						  + m_wallLeftIndexCount
+						  + m_wallRightIndexCount
+						  + m_wallBackIndexCount
+						  + m_wallFloorIndexCount
+						  + m_wallRoofIndexCount
+						  + m_crateIndexCount;
 
 		//A vector of all the vertices into one vertex buffer
 		std::vector<Vertex::PosNormalTex> vertices(totalVertices);
@@ -606,6 +722,48 @@ namespace ee
 			vertices[k].pos		= cubeData.vertices[i].position;
 			vertices[k].normal	= cubeData.vertices[i].normal;
 			vertices[k].tex		= cubeData.vertices[i].texC;
+		}
+
+		for (size_t i = 0; i < wallLeft.vertices.size(); i++, k++)
+		{
+			vertices[k].pos		= wallLeft.vertices[i].position;
+			vertices[k].normal	= wallLeft.vertices[i].normal;
+			vertices[k].tex		= wallLeft.vertices[i].texC;
+		}
+
+		for (size_t i = 0; i < wallRight.vertices.size(); i++, k++)
+		{
+			vertices[k].pos		= wallRight.vertices[i].position;
+			vertices[k].normal	= wallRight.vertices[i].normal;
+			vertices[k].tex		= wallRight.vertices[i].texC;
+		}
+
+		for (size_t i = 0; i < wallBack.vertices.size(); i++, k++)
+		{
+			vertices[k].pos		= wallBack.vertices[i].position;
+			vertices[k].normal	= wallBack.vertices[i].normal;
+			vertices[k].tex		= wallBack.vertices[i].texC;
+		}
+
+		for (size_t i = 0; i < wallFloor.vertices.size(); i++, k++)
+		{
+			vertices[k].pos		= wallFloor.vertices[i].position;
+			vertices[k].normal	= wallFloor.vertices[i].normal;
+			vertices[k].tex		= wallFloor.vertices[i].texC;
+		}
+
+		for (size_t i = 0; i < wallRoof.vertices.size(); i++, k++)
+		{
+			vertices[k].pos		= wallRoof.vertices[i].position;
+			vertices[k].normal	= wallRoof.vertices[i].normal;
+			vertices[k].tex		= wallRoof.vertices[i].texC;
+		}
+
+		for (size_t i = 0; i < crate.vertices.size(); i++, k++)
+		{
+			vertices[k].pos		= crate.vertices[i].position;
+			vertices[k].normal	= crate.vertices[i].normal;
+			vertices[k].tex		= crate.vertices[i].texC;
 		}
 
 		D3D11_BUFFER_DESC vertexBufferDesc;
@@ -622,6 +780,12 @@ namespace ee
 		//Pack the indices of all meshes into one index buffer
 		std::vector<UINT> indices;
 		indices.insert(indices.end(), cubeData.indices.begin(), cubeData.indices.end());
+		indices.insert(indices.end(), wallLeft.indices.begin(), wallLeft.indices.end());
+		indices.insert(indices.end(), wallRight.indices.begin(), wallRight.indices.end());
+		indices.insert(indices.end(), wallBack.indices.begin(), wallBack.indices.end());
+		indices.insert(indices.end(), wallFloor.indices.begin(), wallFloor.indices.end());
+		indices.insert(indices.end(), wallRoof.indices.begin(), wallRoof.indices.end());
+		indices.insert(indices.end(), crate.indices.begin(), crate.indices.end());
 
 		D3D11_BUFFER_DESC indexBufferDesc;
 		indexBufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
@@ -641,26 +805,64 @@ namespace ee
 		XMMATRIX identityMatrix = XMMatrixIdentity();
 		XMStoreFloat4x4(&m_view, identityMatrix);
 		XMStoreFloat4x4(&m_proj, identityMatrix);
-		XMStoreFloat4x4(&m_texTransform, identityMatrix);
+
+		XMMATRIX texScale = XMMatrixScaling(2.0f, 2.0f, 2.0f);
+		XMStoreFloat4x4(&m_texTransform, texScale);
+
+		XMStoreFloat4x4(&m_crateTexTransform, identityMatrix);
 
 		//XMMATRIX boxScale = XMMatrixScaling(2.0f, 2.0f, 2.0f);
-		//XMMATRIX boxOffset = XMMatrixTranslation(0.0f, 0.5f, 0.0f);
-		XMStoreFloat4x4(&m_boxWorld, identityMatrix);
+		XMMATRIX boxOffset = XMMatrixTranslation(0.0f, 4.0f, 8.f);
+		XMStoreFloat4x4(&m_boxWorld, boxOffset);
+
+		XMMATRIX wallLeftOffset = XMMatrixTranslation(10.0f, 4.0f, 0.0f);
+		XMStoreFloat4x4(&m_wallLeftWorld, wallLeftOffset);
+
+		XMMATRIX wallRightOffset = XMMatrixTranslation(-10.0f, 4.0f, 0.0f);
+		XMStoreFloat4x4(&m_wallRightWorld, wallRightOffset);
+
+		XMMATRIX wallBackOffset = XMMatrixTranslation(0.0f, 4.0f, -8.f);
+		XMStoreFloat4x4(&m_wallBackWorld, wallBackOffset);
+
+		XMMATRIX wallFloorOffset = XMMatrixTranslation(0.0f, -1.0f, 0.0f);
+		XMStoreFloat4x4(&m_wallFloorWorld, wallFloorOffset);
+
+		XMMATRIX wallRoofOffset = XMMatrixTranslation(0.0f, +9.0f, 0.0f);
+		XMStoreFloat4x4(&m_wallRoofWorld, wallRoofOffset);
+
+		XMStoreFloat4x4(&m_crateWorld, identityMatrix);
+
 	}
 
 	void Graphics::InitLight()
 	{
-		m_dirLights[0].ambient = XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f);
-		m_dirLights[0].diffuse = XMFLOAT4(0.8f, 0.8f, 0.8f, 1.0f);
+		m_dirLights[0].ambient = XMFLOAT4(0.3f, 0.3f, 0.3f, 0.5f);
+		m_dirLights[0].diffuse = XMFLOAT4(0.8f, 0.8f, 0.8f, 0.5f);
 		m_dirLights[0].specular = XMFLOAT4(0.6f, 0.6f, 0.6f, 16.0f);
 		m_dirLights[0].direction = XMFLOAT3(0.707f, -0.707f, 0.0f);
 
 		m_spotLight.ambient = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
-		m_spotLight.diffuse  = XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f);
+		m_spotLight.diffuse  = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 		m_spotLight.specular = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 		m_spotLight.att      = XMFLOAT3(1.0f, 0.0f, 0.0f);
 		m_spotLight.spot     = 96.0f;
 		m_spotLight.range    = 1000.0f;
+
+		m_staticSpotLight.ambient = XMFLOAT4(0.0f, 0.3f, 0.4f, 1.0f);
+		m_staticSpotLight.diffuse  = XMFLOAT4(0.3f, 0.3f, 0.4f, 1.0f);
+		m_staticSpotLight.specular = XMFLOAT4(0.3f, 0.3f, 0.5f, 1.0f);
+		m_staticSpotLight.att      = XMFLOAT3(1.0f, 0.0f, 0.0f);
+		m_staticSpotLight.spot     = 96.0f;
+		m_staticSpotLight.range    = 1000.0f;
+		m_staticSpotLight.position = XMFLOAT3(0.0f, 9.0f, 0.0f);
+		m_staticSpotLight.direction = XMFLOAT3(0.0f, -1.0f, 0.0f);
+
+		m_pointLight.ambient  = XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f);
+		m_pointLight.diffuse  = XMFLOAT4(0.7f, 0.7f, 0.7f, 1.0f);
+		m_pointLight.specular = XMFLOAT4(0.7f, 0.7f, 0.7f, 1.0f);
+		m_pointLight.att      = XMFLOAT3(0.0f, 0.1f, 0.0f);
+		m_pointLight.range    = 25.0f;
+		m_pointLight.position = XMFLOAT3(5.0f, 5.0f, 5.0f);
 
 		m_boxMat.ambient = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
 		m_boxMat.diffuse = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
@@ -673,5 +875,7 @@ namespace ee
 	{
 		//Just load single brick texture
 		HR(D3DX11CreateShaderResourceViewFromFile(m_device, L"Textures/darkbrickdxt1.dds", NULL, NULL, &m_diffuseMap, NULL));
+		//And crate texture
+		HR(D3DX11CreateShaderResourceViewFromFile(m_device, L"Textures/WoodCrate01.dds", NULL, NULL, &m_crateDiffuseMap, NULL));
 	}
 }
